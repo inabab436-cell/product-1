@@ -14,14 +14,10 @@ import { Route as AwaitingPaymentRouteImport } from './routes/awaiting-payment'
 import { Route as ContactsRouteImport } from './routes/contacts'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EarningsRouteImport } from './routes/earnings'
-import { Route as InterventionsRouteImport } from './routes/interventions'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as ManualEntryRouteImport } from './routes/manual-entry'
-import { Route as MissingInfoRouteImport } from './routes/missing-info'
 import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
-import { Route as PoliciesRouteImport } from './routes/policies'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PublishedRouteImport } from './routes/published'
 import { Route as ShippingRouteImport } from './routes/shipping'
@@ -32,7 +28,6 @@ import { Route as ApiVisitorRouteImport } from './routes/api/visitor'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as ChatSlugRouteImport } from './routes/chat.$slug'
-import { Route as ConversationIdRouteImport } from './routes/conversation.$id'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsPaymentMethodsRouteImport } from './routes/settings.payment-methods'
 import { Route as TeamJoinRouteImport } from './routes/team.join'
@@ -64,11 +59,6 @@ const EarningsRoute = EarningsRouteImport.update({
   path: '/earnings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InterventionsRoute = InterventionsRouteImport.update({
-  id: '/interventions',
-  path: '/interventions',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -79,16 +69,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ManualEntryRoute = ManualEntryRouteImport.update({
-  id: '/manual-entry',
-  path: '/manual-entry',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MissingInfoRoute = MissingInfoRouteImport.update({
-  id: '/missing-info',
-  path: '/missing-info',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const OffersRoute = OffersRouteImport.update({
   id: '/offers',
   path: '/offers',
@@ -97,11 +77,6 @@ const OffersRoute = OffersRouteImport.update({
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PoliciesRoute = PoliciesRouteImport.update({
-  id: '/policies',
-  path: '/policies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -154,11 +129,6 @@ const ChatSlugRoute = ChatSlugRouteImport.update({
   path: '/chat/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConversationIdRoute = ConversationIdRouteImport.update({
-  id: '/conversation/$id',
-  path: '/conversation/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
   id: '/settings/notifications',
   path: '/settings/notifications',
@@ -191,14 +161,10 @@ export interface FileRoutesByFullPath {
   '/contacts': typeof ContactsRoute
   '/dashboard': typeof DashboardRoute
   '/earnings': typeof EarningsRoute
-  '/interventions': typeof InterventionsRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
-  '/manual-entry': typeof ManualEntryRoute
-  '/missing-info': typeof MissingInfoRoute
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
-  '/policies': typeof PoliciesRoute
   '/products': typeof ProductsRoute
   '/published': typeof PublishedRoute
   '/shipping': typeof ShippingRoute
@@ -209,7 +175,6 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/c/$slug': typeof CSlugRouteWithChildren
   '/chat/$slug': typeof ChatSlugRoute
-  '/conversation/$id': typeof ConversationIdRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/payment-methods': typeof SettingsPaymentMethodsRoute
   '/team/join': typeof TeamJoinRoute
@@ -222,14 +187,10 @@ export interface FileRoutesByTo {
   '/contacts': typeof ContactsRoute
   '/dashboard': typeof DashboardRoute
   '/earnings': typeof EarningsRoute
-  '/interventions': typeof InterventionsRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
-  '/manual-entry': typeof ManualEntryRoute
-  '/missing-info': typeof MissingInfoRoute
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
-  '/policies': typeof PoliciesRoute
   '/products': typeof ProductsRoute
   '/published': typeof PublishedRoute
   '/shipping': typeof ShippingRoute
@@ -239,7 +200,6 @@ export interface FileRoutesByTo {
   '/api/visitor': typeof ApiVisitorRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/chat/$slug': typeof ChatSlugRoute
-  '/conversation/$id': typeof ConversationIdRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/payment-methods': typeof SettingsPaymentMethodsRoute
   '/team/join': typeof TeamJoinRoute
@@ -253,14 +213,10 @@ export interface FileRoutesById {
   '/contacts': typeof ContactsRoute
   '/dashboard': typeof DashboardRoute
   '/earnings': typeof EarningsRoute
-  '/interventions': typeof InterventionsRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
-  '/manual-entry': typeof ManualEntryRoute
-  '/missing-info': typeof MissingInfoRoute
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
-  '/policies': typeof PoliciesRoute
   '/products': typeof ProductsRoute
   '/published': typeof PublishedRoute
   '/shipping': typeof ShippingRoute
@@ -271,7 +227,6 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/c/$slug': typeof CSlugRouteWithChildren
   '/chat/$slug': typeof ChatSlugRoute
-  '/conversation/$id': typeof ConversationIdRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/payment-methods': typeof SettingsPaymentMethodsRoute
   '/team/join': typeof TeamJoinRoute
@@ -286,14 +241,10 @@ export interface FileRouteTypes {
     | '/contacts'
     | '/dashboard'
     | '/earnings'
-    | '/interventions'
     | '/join'
     | '/login'
-    | '/manual-entry'
-    | '/missing-info'
     | '/offers'
     | '/orders'
-    | '/policies'
     | '/products'
     | '/published'
     | '/shipping'
@@ -304,7 +255,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/c/$slug'
     | '/chat/$slug'
-    | '/conversation/$id'
     | '/settings/notifications'
     | '/settings/payment-methods'
     | '/team/join'
@@ -317,14 +267,10 @@ export interface FileRouteTypes {
     | '/contacts'
     | '/dashboard'
     | '/earnings'
-    | '/interventions'
     | '/join'
     | '/login'
-    | '/manual-entry'
-    | '/missing-info'
     | '/offers'
     | '/orders'
-    | '/policies'
     | '/products'
     | '/published'
     | '/shipping'
@@ -334,7 +280,6 @@ export interface FileRouteTypes {
     | '/api/visitor'
     | '/auth/callback'
     | '/chat/$slug'
-    | '/conversation/$id'
     | '/settings/notifications'
     | '/settings/payment-methods'
     | '/team/join'
@@ -347,14 +292,10 @@ export interface FileRouteTypes {
     | '/contacts'
     | '/dashboard'
     | '/earnings'
-    | '/interventions'
     | '/join'
     | '/login'
-    | '/manual-entry'
-    | '/missing-info'
     | '/offers'
     | '/orders'
-    | '/policies'
     | '/products'
     | '/published'
     | '/shipping'
@@ -365,7 +306,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/c/$slug'
     | '/chat/$slug'
-    | '/conversation/$id'
     | '/settings/notifications'
     | '/settings/payment-methods'
     | '/team/join'
@@ -379,14 +319,10 @@ export interface RootRouteChildren {
   ContactsRoute: typeof ContactsRoute
   DashboardRoute: typeof DashboardRoute
   EarningsRoute: typeof EarningsRoute
-  InterventionsRoute: typeof InterventionsRoute
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
-  ManualEntryRoute: typeof ManualEntryRoute
-  MissingInfoRoute: typeof MissingInfoRoute
   OffersRoute: typeof OffersRoute
   OrdersRoute: typeof OrdersRoute
-  PoliciesRoute: typeof PoliciesRoute
   ProductsRoute: typeof ProductsRoute
   PublishedRoute: typeof PublishedRoute
   ShippingRoute: typeof ShippingRoute
@@ -397,7 +333,6 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   CSlugRoute: typeof CSlugRouteWithChildren
   ChatSlugRoute: typeof ChatSlugRoute
-  ConversationIdRoute: typeof ConversationIdRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsPaymentMethodsRoute: typeof SettingsPaymentMethodsRoute
 }
@@ -439,13 +374,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EarningsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/interventions': {
-      id: '/interventions'
-      path: '/interventions'
-      fullPath: '/interventions'
-      preLoaderRoute: typeof InterventionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/join': {
       id: '/join'
       path: '/join'
@@ -460,20 +388,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/manual-entry': {
-      id: '/manual-entry'
-      path: '/manual-entry'
-      fullPath: '/manual-entry'
-      preLoaderRoute: typeof ManualEntryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/missing-info': {
-      id: '/missing-info'
-      path: '/missing-info'
-      fullPath: '/missing-info'
-      preLoaderRoute: typeof MissingInfoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/offers': {
       id: '/offers'
       path: '/offers'
@@ -486,13 +400,6 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders'
       preLoaderRoute: typeof OrdersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/policies': {
-      id: '/policies'
-      path: '/policies'
-      fullPath: '/policies'
-      preLoaderRoute: typeof PoliciesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -565,13 +472,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/conversation/$id': {
-      id: '/conversation/$id'
-      path: '/conversation/$id'
-      fullPath: '/conversation/$id'
-      preLoaderRoute: typeof ConversationIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings/notifications': {
       id: '/settings/notifications'
       path: '/settings/notifications'
@@ -638,14 +538,10 @@ const rootRouteChildren: RootRouteChildren = {
   ContactsRoute: ContactsRoute,
   DashboardRoute: DashboardRoute,
   EarningsRoute: EarningsRoute,
-  InterventionsRoute: InterventionsRoute,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
-  ManualEntryRoute: ManualEntryRoute,
-  MissingInfoRoute: MissingInfoRoute,
   OffersRoute: OffersRoute,
   OrdersRoute: OrdersRoute,
-  PoliciesRoute: PoliciesRoute,
   ProductsRoute: ProductsRoute,
   PublishedRoute: PublishedRoute,
   ShippingRoute: ShippingRoute,
@@ -656,7 +552,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   CSlugRoute: CSlugRouteWithChildren,
   ChatSlugRoute: ChatSlugRoute,
-  ConversationIdRoute: ConversationIdRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsPaymentMethodsRoute: SettingsPaymentMethodsRoute,
 }
