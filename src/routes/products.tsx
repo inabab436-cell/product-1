@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageShell, PageHero, SurfaceCard } from "@/components/layout/page-shell";
 import {
-  listWebsiteProducts, setProductPublished, retryProductDescription, uploadProductImage,
+  listWebsiteProducts, setProductPublished, uploadProductImage,
   upsertWebsiteProduct, deleteWebsiteProduct, deleteProductImage,
   listProductSales,
   type WebsiteProductDTO,
@@ -86,12 +86,6 @@ function ProductsPage() {
   const q = useQuery({
     queryKey: ["website-products"],
     queryFn: () => listWebsiteProducts(),
-    refetchInterval: (query) => {
-      const products = query.state.data as WebsiteProductDTO[] | undefined;
-      return products?.some((p) => p.images.length > 0 && p.description_status === "generating")
-        ? 2500
-        : false;
-    },
   });
   // Sold pieces per product, read from confirmed orders.
   const salesQ = useQuery({
@@ -180,7 +174,7 @@ function ProductsPage() {
       ) : rows.length === 0 ? (
         <SurfaceCard className="p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-brand text-primary-foreground shadow-glow">
-            <Sparkles className="h-6 w-6" />
+            <Package className="h-6 w-6" />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
             لا توجد منتجات بعد. أضف منتجك الأول يدويًا للبدء.
@@ -282,7 +276,6 @@ function ProductsPage() {
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="font-semibold">{p.name}</span>
-                                  <DescriptionStatusIndicator product={p} />
                                 </div>
                                 {p.description && (
                                   <div className="line-clamp-1 max-w-[22ch] text-xs text-muted-foreground">
@@ -419,58 +412,6 @@ function ProductsPage() {
         </>
       )}
     </PageShell>
-  );
-}
-
-/** Small read-only indicator for the internal image-description status.
- *  "Retry" appears only in the failed state and re-runs the existing job. */
-function DescriptionStatusIndicator({ product }: { product: WebsiteProductDTO }) {
-  const qc = useQueryClient();
-  const retry = useMutation({
-    mutationFn: () => retryProductDescription({ data: { productId: product.id } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["website-products"] });
-      toast.success("تمت إعادة توليد وصف الصور.");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "فشلت إعادة المحاولة."),
-  });
-
-  // A product with no images at all is not being processed — show a distinct
-  // state instead of the misleading "generating" / "failed" labels.
-  const hasImages = product.images.length > 0;
-  const s = hasImages ? product.description_status : "no_images";
-  if (s === "ready") return null;
-  const label =
-    s === "no_images"
-      ? "وصف الصور: لا توجد صور بعد"
-      : s === "failed"
-          ? "وصف الصور: فشل"
-          : "وصف الصور: قيد التوليد";
-  const tone =
-    s === "failed"
-      ? "border-destructive/30 bg-destructive/10 text-destructive"
-      : s === "no_images"
-        ? "border-amber-500/30 bg-amber-500/10 text-amber-600"
-        : "border-border/60 bg-muted text-muted-foreground";
-
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${tone}`}>
-        {s === "generating" && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
-        {s === "no_images" && <ImageOff className="h-2.5 w-2.5" />}
-        {label}
-      </span>
-      {s === "failed" && (
-        <button
-          type="button"
-          onClick={() => retry.mutate()}
-          disabled={retry.isPending}
-          className="rounded-md border border-border/60 px-1.5 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:opacity-60"
-        >
-          {retry.isPending ? "جارٍ..." : "إعادة المحاولة"}
-        </button>
-      )}
-    </span>
   );
 }
 
@@ -891,11 +832,6 @@ function AddProductDialog({
   }
 
 
-  /** Stable identity for a picked file (survives moving between groups). */
-  function fileKey(f: File) {
-    return `${f.name}:${f.size}:${f.lastModified}`;
-  }
-
   function reset() {
     setName(""); setDescription(""); setMaterial(""); setPrice("");
     setColors([]); setPendingImages({});
@@ -977,7 +913,7 @@ function AddProductDialog({
     onError: (e) => toast.error(e instanceof Error ? e.message : "فشل إنشاء المنتج."),
   });
 
-  function Thumbs({ imgKey, colorIndex }: { imgKey: string; colorIndex: number | null }) {
+  function Thumbs({ imgKey }: { imgKey: string }) {
     const files = (pendingImages[imgKey] ?? [])
       .map((f, realIndex) => ({ f, realIndex }));
     if (files.length === 0) return null;
@@ -1053,7 +989,7 @@ function AddProductDialog({
             <p className="text-[10px] text-muted-foreground">
               بعد الرفع، اختر لون كل صورة من القائمة أسفلها أو أضف لونًا جديدًا.
             </p>
-            <Thumbs imgKey="g" colorIndex={null} />
+            <Thumbs imgKey="g" />
           </section>
 
           {/* Basic info */}
@@ -1155,7 +1091,7 @@ function AddProductDialog({
                   </label>
                 </div>
                 {/* Images of a colour are shown ONCE, on the first row of its group. */}
-                {isFirstRowOfGroup(i) && <Thumbs imgKey={c.gkey} colorIndex={i} />}
+                {isFirstRowOfGroup(i) && <Thumbs imgKey={c.gkey} />}
               </div>
             ))}
           </section>
@@ -1224,11 +1160,7 @@ function EditProductDialog({
   
   // New images picked in this session, keyed by colour group key ("" = general).
   const [pending, setPending] = useState<Record<string, File[]>>({});
-  /**
-   * Already-saved images that the AI just resolved to a colour: imageId → group
-   * key. The image MOVES into that colour group (it is never kept as a second,
-   * colour-less copy) and the link is persisted on save.
-   */
+  /** Saved images manually moved to a colour in this editing session. */
   const [savedAssign, setSavedAssign] = useState<Record<string, string>>({});
   const [loadedId, setLoadedId] = useState<string | null>(null);
 
@@ -1466,6 +1398,22 @@ function EditProductDialog({
     );
   }
 
+  function SavedImageColorPicker({ imageId, value = "" }: { imageId: string; value?: string }) {
+    return (
+      <select
+        aria-label="لون الصورة"
+        className="mt-1 h-6 w-20 rounded-md border border-border/60 bg-background px-1 text-[9px]"
+        value={savedAssign[imageId] ?? value}
+        onChange={(e) => setSavedAssign((prev) => ({ ...prev, [imageId]: e.target.value }))}
+      >
+        <option value="">بدون لون</option>
+        {Array.from(new Map(colors.map((c) => [c.gkey, c] as const)).values()).map((c, ci) => (
+          <option key={c.gkey} value={c.gkey}>{c.label.trim() || `لون ${ci + 1}`}</option>
+        ))}
+      </select>
+    );
+  }
+
   return (
     <Dialog open={!!product} onOpenChange={(v) => { if (!v) setLoadedId(null); onOpenChange(v); }}>
       <DialogContent dir="rtl" className="max-h-[85vh] max-w-2xl overflow-y-auto">
@@ -1499,6 +1447,7 @@ function EditProductDialog({
                     className="absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-destructive-foreground">
                     <X className="h-2.5 w-2.5" />
                   </button>
+                  <SavedImageColorPicker imageId={img.id} />
                 </div>
               ))}
               {(pending[""] ?? []).map((f, k) => { return (
@@ -1594,6 +1543,7 @@ function EditProductDialog({
                         className="absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-destructive-foreground">
                         <X className="h-2.5 w-2.5" />
                       </button>
+                      <SavedImageColorPicker imageId={img.id} value={c.gkey} />
                     </div>
                   ))}
                   {(pending[c.gkey] ?? []).map((f, k) => (

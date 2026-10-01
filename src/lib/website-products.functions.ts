@@ -22,7 +22,7 @@ export interface ImageDTO {
   size_id: string | null;
   position: number;
 }
-/** Status of the internal image description (used for customer photo matching). */
+  /** Legacy status retained for compatibility with existing product rows. */
 export type DescriptionStatus = "generating" | "ready" | "failed";
 /** Per color/size inventory row (canonical `product_variants`). */
 export interface VariantDTO {
@@ -252,10 +252,7 @@ export interface UpsertProductInput {
   /** Optional per color/size inventory. When omitted, variants are untouched. */
   variants?: { color?: string | null; size?: string | null; quantity?: number | null }[];
   /**
-   * Re-assign already-saved images to a colour (by label). Used when the AI
-   * detects the colour of an image that was still unlinked: the SAME image row
-   * becomes the colour image — it is never duplicated or kept as a separate
-   * "general" image.
+   * Re-assign already-saved images to a colour (by label) from the editor.
    */
   imageColorAssignments?: { imageId: string; colorLabel: string }[];
 }
@@ -401,9 +398,7 @@ export const upsertWebsiteProduct = createServerFn({ method: "POST" })
         .eq("id", link.id).eq("user_id", userId);
     }
 
-    // Move already-saved images onto their (AI-)detected colour. The image row
-    // itself is updated, so the product never ends up with the same photo both
-    // as an unlinked "general" image and as a colour image.
+    // Move already-saved images to the colour selected in the editor.
     for (const a of data.imageColorAssignments) {
       const cid = colorIdByLabel.get(a.colorLabel.toLowerCase());
       if (!cid) continue;
@@ -517,12 +512,6 @@ export const uploadProductImage = createServerFn({ method: "POST" })
     if (error || !row) throw new Error(error?.message ?? "Insert image failed.");
 
     const signed = await createSignedUrl(path, 60 * 60);
-
-    // Run the existing visual-description mechanism to completion before the
-    // upload request finishes. A detached promise can be terminated by the
-    // serverless runtime, leaving the product permanently at "generating".
-    const { regenerateProductDescription } = await import("@/lib/product-vision.server");
-    await regenerateProductDescription({ userId, productId: data.productId });
 
     return {
       id: String(row.id), url: signed, storage_path: path,
