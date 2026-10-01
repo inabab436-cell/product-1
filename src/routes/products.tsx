@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Package, ChevronDown, ChevronUp, Sparkles, Plus, Trash2, Loader2, ImageOff, ImagePlus, X, Pencil, Layers, TrendingUp, Boxes, Wallet, PackagePlus } from "lucide-react";
+import { Package, ChevronDown, ChevronUp, Plus, Trash2, Loader2, ImageOff, ImagePlus, X, Pencil, Layers, TrendingUp, Boxes, Wallet, PackagePlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,7 @@ import {
 import { PageShell, PageHero, SurfaceCard } from "@/components/layout/page-shell";
 import {
   listWebsiteProducts, setProductPublished, retryProductDescription, uploadProductImage,
-  upsertWebsiteProduct, deleteWebsiteProduct, deleteProductImage, analyzeProductImage,
-  analyzeProductImageFile,
+  upsertWebsiteProduct, deleteWebsiteProduct, deleteProductImage,
   listProductSales,
   type WebsiteProductDTO,
   type ProductSalesDTO,
@@ -753,7 +752,6 @@ type AddColor = {
   label: string;
   size: string;
   quantity: string;
-  suggested?: boolean;
 };
 
 /** Sizes auto-filled, in order, each time a new colour row is printed. */
@@ -793,11 +791,6 @@ function AddProductDialog({
   const [colors, setColors] = useState<AddColor[]>([]);
   // Images picked before the product exists, keyed by colour group key ("g" = intake).
   const [pendingImages, setPendingImages] = useState<Record<string, File[]>>({});
-  const [analyzingKey, setAnalyzingKey] = useState<string | null>(null);
-  // Images already analyzed once — their «تحليل» button never comes back.
-  const [analyzedFiles, setAnalyzedFiles] = useState<Set<string>>(new Set());
-  // Progress of the automatic "analyze then group by colour" pass.
-  const [grouping, setGrouping] = useState<{ done: number; total: number } | null>(null);
 
   // Always-fresh view of `colors` for use after awaits.
   const colorsRef = useRef<AddColor[]>(colors);
@@ -886,7 +879,7 @@ function AddProductDialog({
       target = nextAddGroupKey();
       setColors((rows) => [
         ...rows,
-        { gkey: target, label: "", size: nextCycleSize(rows.length), quantity: "", suggested: true },
+        { gkey: target, label: "", size: nextCycleSize(rows.length), quantity: "" },
       ]);
     }
     if (target === fromKey) return;
@@ -905,97 +898,17 @@ function AddProductDialog({
 
   function reset() {
     setName(""); setDescription(""); setMaterial(""); setPrice("");
-    setColors([]); setPendingImages({}); setAnalyzingKey(null);
-    setGrouping(null); setAnalyzedFiles(new Set());
+    setColors([]); setPendingImages({});
   }
 
 
-  // Analyze ONE image. The colour is never merged into the name/description:
-  // it is attached to the image as its own colour group, so the agent always
-  // sees "this image = this colour" instead of an unusable general image.
-  async function analyzeFile(key: string, file: File, colorIndex: number | null) {
-    setAnalyzingKey(`${key}:${file.name}`);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await analyzeProductImageFile({ data: fd });
-      // Analyzed once → hide this image's «تحليل» button for good.
-      setAnalyzedFiles((prev) => new Set(prev).add(fileKey(file)));
-
-      // Basic (colour-free) product data — only fills what is still empty.
-      if (res.name && !name.trim()) setName(res.name);
-      if (res.description && !description.trim()) setDescription(res.description);
-      if (res.material && !material.trim()) setMaterial(res.material);
-      if (res.price != null && !price.trim()) setPrice(String(res.price));
-
-      const detected = (res.colors[0] ?? "").trim();
-
-      if (colorIndex != null) {
-        const cur = colorsRef.current[colorIndex];
-        if (detected && !cur?.label.trim()) patchColor(colorIndex, { label: detected });
-        if (res.sizes[0] && !cur?.size.trim()) {
-          patchColor(colorIndex, { size: res.sizes[0] });
-        }
-        toast.success("تم تحليل الصورة، يمكنك تعديل الاقتراحات.");
-        return;
-      }
-
-      // Image still in the intake area → move it into its colour group.
-      const nextColors = [...colorsRef.current];
-      let idx = detected
-        ? nextColors.findIndex((c) => colorKey(c.label) === colorKey(detected))
-        : -1;
-      if (idx < 0) {
-        nextColors.push({
-          gkey: nextAddGroupKey(),
-          label: detected,
-          size: res.sizes[0] ?? nextCycleSize(nextColors.length),
-          quantity: "",
-          suggested: true,
-        });
-        idx = nextColors.length - 1;
-      } else if (res.sizes[0] && !nextColors[idx]!.size.trim()) {
-        nextColors[idx] = { ...nextColors[idx]!, size: res.sizes[0]! };
-      }
-      const gkey = nextColors[idx]!.gkey;
-      colorsRef.current = nextColors;
-      setColors(nextColors);
-      setPendingImages((prev) => ({
-        ...prev,
-        [key]: (prev[key] ?? []).filter((f) => fileKey(f) !== fileKey(file)),
-        [gkey]: [...(prev[gkey] ?? []), file],
-      }));
-
-      toast.success(
-        detected
-          ? `تم التعرف على اللون «${detected}» وربط الصورة به.`
-          : "تم التحليل، اكتب اسم اللون الخاص بهذه الصورة.",
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "فشل تحليل الصورة.");
-    } finally {
-      setAnalyzingKey(null);
-    }
-  }
-
-  /** Pick images into the intake area — nothing runs until «تحليل». */
+  /** Add selected product images to the unassigned image area. */
   function addIntakeFiles(list: FileList | null) {
     const picked = Array.from(list ?? []).filter((f) => /^image\//i.test(f.type));
     if (picked.length === 0) return;
     setPendingImages((prev) => ({ ...prev, g: [...(prev["g"] ?? []), ...picked] }));
   }
 
-  /** Analyze every image still waiting in the intake area, one by one. */
-  async function analyzeAllIntake() {
-    const files = [...(pendingImages["g"] ?? [])].filter((f) => !analyzedFiles.has(fileKey(f)));
-    if (files.length === 0) return;
-    setGrouping({ done: 0, total: files.length });
-    for (const f of files) {
-      await analyzeFile("g", f, null);
-      setGrouping((p) => (p ? { ...p, done: p.done + 1 } : p));
-    }
-    setGrouping(null);
-  }
 
 
   const createMut = useMutation({
@@ -1065,18 +978,13 @@ function AddProductDialog({
   });
 
   function Thumbs({ imgKey, colorIndex }: { imgKey: string; colorIndex: number | null }) {
-    // In the intake area an analyzed image is ALWAYS moved into its colour
-    // group — never keep a second copy of it here.
     const files = (pendingImages[imgKey] ?? [])
-      .map((f, realIndex) => ({ f, realIndex }))
-      .filter(({ f }) => imgKey !== "g" || !analyzedFiles.has(fileKey(f)));
+      .map((f, realIndex) => ({ f, realIndex }));
     if (files.length === 0) return null;
 
     return (
       <div className="flex flex-wrap gap-3">
         {files.map(({ f, realIndex: k }) => {
-          const busy = analyzingKey === `${imgKey}:${f.name}`;
-          const done = analyzedFiles.has(fileKey(f));
           return (
             <div key={`${f.name}-${k}`} className="flex flex-col items-center gap-1">
               <div className="relative">
@@ -1094,18 +1002,6 @@ function AddProductDialog({
                   <X className="h-2.5 w-2.5" />
                 </button>
               </div>
-              {!done && (
-                <Button
-                  type="button" size="sm" variant="outline"
-                  className="h-6 px-2 text-[10px]"
-                  disabled={busy}
-                  onClick={() => analyzeFile(imgKey, f, colorIndex)}
-                >
-                  {busy
-                    ? <Loader2 className="h-3 w-3 animate-spin" />
-                    : <><Sparkles className="ml-1 h-3 w-3" />تحليل</>}
-                </Button>
-              )}
               <select
                 aria-label="نقل الصورة إلى مجموعة"
                 className="h-6 w-[84px] rounded-md border border-border/60 bg-background px-1 text-[10px]"
@@ -1137,47 +1033,26 @@ function AddProductDialog({
         <DialogHeader>
           <DialogTitle>إضافة منتج جديد</DialogTitle>
           <DialogDescription>
-            ارفع الصور واستخدم زر «تحليل» لملء البيانات تلقائيًا، ثم عدّلها كما تريد.
+            أدخل بيانات المنتج وارفع صوره، ثم اربط كل صورة بلونها.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Image intake — first step: upload, then press «تحليل» */}
+          {/* Simple image upload and manual colour assignment. */}
           <section className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-xs font-semibold text-primary">١. صور المنتج</h4>
-              <div className="flex items-center gap-2">
-                {(pendingImages["g"] ?? []).filter((f) => !analyzedFiles.has(fileKey(f))).length > 1 && (
-                  <Button
-                    type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]"
-                    disabled={!!grouping || !!analyzingKey}
-                    onClick={() => { void analyzeAllIntake(); }}
-                  >
-                    <Sparkles className="ml-1 h-3 w-3" /> تحليل الكل
-                  </Button>
-                )}
-                <label className={`inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 text-[11px] transition ${
-                  grouping ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/40 hover:text-primary"
-                }`}>
-                  <ImagePlus className="h-3.5 w-3.5" /> رفع صور
-                  <input
-                    type="file" accept="image/*" multiple className="hidden"
-                    disabled={!!grouping}
-                    onChange={(e) => { addIntakeFiles(e.target.files); e.currentTarget.value = ""; }}
-                  />
-                </label>
-              </div>
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 text-[11px] transition hover:border-primary/40 hover:text-primary">
+                <ImagePlus className="h-3.5 w-3.5" /> رفع صور
+                <input
+                  type="file" accept="image/*" multiple className="hidden"
+                  onChange={(e) => { addIntakeFiles(e.target.files); e.currentTarget.value = ""; }}
+                />
+              </label>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              ارفع الصور ثم اضغط «تحليل» بجانب كل صورة: يستخرج الذكاء الاصطناعي بيانات المنتج الأساسية،
-              ويضع اللون في خانة اللون ويربط الصورة به كصورة لهذا اللون — لا توجد صور عامة.
+              بعد الرفع، اختر لون كل صورة من القائمة أسفلها أو أضف لونًا جديدًا.
             </p>
-            {grouping && (
-              <p className="flex items-center gap-1 text-[11px] text-primary">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                جارٍ تحليل الصور… ({grouping.done}/{grouping.total})
-              </p>
-            )}
             <Thumbs imgKey="g" colorIndex={null} />
           </section>
 
@@ -1231,11 +1106,6 @@ function AddProductDialog({
             )}
             {colors.map((c, i) => (
               <div key={i} className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-3">
-                {c.suggested && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-                    <Sparkles className="h-3 w-3" /> مقترح من التحليل — عدّله كما تريد
-                  </span>
-                )}
                 <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
                   <div className="space-y-1">
                     <label className="text-[10px] text-muted-foreground">اسم اللون</label>
@@ -1332,7 +1202,6 @@ type EditColor = {
   /** Exactly ONE size per row. */
   size: string;
   quantity: string;
-  suggested?: boolean;
 };
 
 let editGroupSeq = 0;
@@ -1363,10 +1232,6 @@ function EditProductDialog({
   const [savedAssign, setSavedAssign] = useState<Record<string, string>>({});
   const [loadedId, setLoadedId] = useState<string | null>(null);
 
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
-  // Images already analyzed once — their «تحليل» button never comes back.
-  const [analyzedIds, setAnalyzedIds] = useState<Set<string>>(new Set());
-  const [grouping, setGrouping] = useState<{ done: number; total: number } | null>(null);
 
   const colorsRef = useRef<EditColor[]>(colors);
   colorsRef.current = colors;
@@ -1403,7 +1268,6 @@ function EditProductDialog({
     );
     setPending({});
     setSavedAssign({});
-    setGrouping(null);
 
   }
 
@@ -1413,60 +1277,7 @@ function EditProductDialog({
     onError: (e) => toast.error(e instanceof Error ? e.message : "فشل حذف الصورة."),
   });
 
-  // AI suggestion from a single saved image — same existing mechanism used
-  // elsewhere. Always runs against the latest saved state of the product.
-  const analyze = useMutation({
-    mutationFn: async (v: { imageId: string; colorIndex: number | null }) => {
-      setAnalyzingId(v.imageId);
-      await qc.refetchQueries({ queryKey: ["website-products"] });
-      const res = await analyzeProductImage({ data: { imageId: v.imageId } });
-      setAnalyzedIds((prev) => new Set(prev).add(v.imageId));
-      return { res, colorIndex: v.colorIndex, imageId: v.imageId };
-    },
-    onSettled: () => setAnalyzingId(null),
-    onSuccess: ({ res, colorIndex, imageId }) => {
-      if (colorIndex == null) {
-        if (res.name) setName(res.name);
-        if (res.description) setDescription(res.description);
-        if (res.material && !material.trim()) setMaterial(res.material);
-        if (res.price != null) setPrice(String(res.price));
-        const detectedColor = (res.colors[0] ?? "").trim();
-        if (detectedColor) {
-          // The image BECOMES this colour's image — it must not stay as a
-          // separate colour-less copy of the same photo.
-          const rows = [...colorsRef.current];
-          let idx = rows.findIndex((c) => colorKey(c.label) === colorKey(detectedColor));
-          if (idx < 0) {
-            rows.push({
-              gkey: nextGroupKey(), label: detectedColor, hex: null,
-              size: res.sizes[0] ?? nextCycleSize(rows.length), quantity: "", suggested: true,
-            });
-            idx = rows.length - 1;
-          }
-          colorsRef.current = rows;
-          setColors(rows);
-          setSavedAssign((prev) => ({ ...prev, [imageId]: rows[idx]!.gkey }));
-        }
-        toast.success(
-          detectedColor
-            ? `تم استخراج البيانات، ونُقلت الصورة إلى اللون «${detectedColor}».`
-            : "تم اقتراح البيانات من الصورة، يمكنك تعديلها قبل الحفظ.",
-        );
 
-      } else {
-        const detected = res.colors.find((c) => c.trim());
-        if (res.material && !material.trim()) setMaterial(res.material);
-        if (detected) {
-          setColors((rows) => rows.map((r, j) => j === colorIndex ? { ...r, label: detected.trim() } : r));
-          toast.success("تم اقتراح اسم اللون، يمكنك تعديله قبل الحفظ.");
-        } else {
-          toast.info("لم يتم التعرف على لون في هذه الصورة.");
-        }
-      }
-
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "فشل تحليل الصورة."),
-  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -1501,8 +1312,7 @@ function EditProductDialog({
           sizes: allSizes.map((label) => ({ label })),
           colors: cleanColors.map((c) => ({ label: c.label.trim(), hex: c.hex })),
           variants,
-          // Saved images the AI resolved to a colour: move the SAME row onto
-          // that colour instead of leaving a duplicate colour-less image.
+          // Persist any saved-image colour assignments made in this editor.
           imageColorAssignments: Object.entries(savedAssign)
             .map(([imageId, gkey]) => ({ imageId, colorLabel: labelByKeyAll.get(gkey) ?? "" }))
             .filter((a) => a.colorLabel),
@@ -1528,13 +1338,13 @@ function EditProductDialog({
 
   if (!product) return null;
 
-  /** Images of a colour group: saved links + images just moved by the AI. */
+  /** Images assigned to a colour group. */
   const imagesForGroup = (colorId: string | undefined, gkey: string) =>
     product.images.filter(
       (i) => (colorId ? i.color_id === colorId : false) || savedAssign[i.id] === gkey,
     );
 
-  /** Truly unassigned images only — analysed ones move out of here. */
+  /** Images that are not assigned to a colour or size. */
   const imagesFor = (colorId?: string) =>
     product.images.filter((i) =>
       colorId ? i.color_id === colorId : !i.color_id && !i.size_id && !savedAssign[i.id],
@@ -1618,7 +1428,7 @@ function EditProductDialog({
       target = nextGroupKey();
       setColors((rows) => [...rows, {
         gkey: target, label: "", hex: null,
-        size: nextCycleSize(rows.length), quantity: "", suggested: true,
+        size: nextCycleSize(rows.length), quantity: "",
       }]);
     }
     if (target === fromKey) return;
@@ -1629,84 +1439,13 @@ function EditProductDialog({
     }));
   }
 
-  /** Pick images into the intake area — nothing runs until «تحليل». */
+  /** Add selected product images to the unassigned image area. */
   function addIntakeFiles(list: FileList | null) {
     const picked = Array.from(list ?? []).filter((f) => /^image\//i.test(f.type));
     if (picked.length === 0) return;
     setPending((prev) => ({ ...prev, "": [...(prev[""] ?? []), ...picked] }));
   }
 
-  /** Stable identity for a picked file (survives moving between groups). */
-  function pendingFileKey(f: File) {
-    return `pf:${f.name}:${f.size}:${f.lastModified}`;
-  }
-
-  /**
-   * Analyze one not-yet-saved image: fill the empty basic fields (never the
-   * colour), then attach the image to its detected colour group.
-   */
-  async function analyzePendingFile(file: File) {
-    setAnalyzingId(`pending:${file.name}`);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await analyzeProductImageFile({ data: fd });
-      // Analyzed once → hide this image's «تحليل» button for good.
-      setAnalyzedIds((prev) => new Set(prev).add(pendingFileKey(file)));
-
-      if (res.name && !name.trim()) setName(res.name);
-      if (res.description && !description.trim()) setDescription(res.description);
-      if (res.material && !material.trim()) setMaterial(res.material);
-      if (res.price != null && !price.trim()) setPrice(String(res.price));
-
-      const detected = (res.colors[0] ?? "").trim();
-      const nextColors = [...colorsRef.current];
-      let idx = detected
-        ? nextColors.findIndex((c) => colorKey(c.label) === colorKey(detected))
-        : -1;
-      if (idx < 0) {
-        nextColors.push({
-          gkey: nextGroupKey(), label: detected, hex: null,
-          size: res.sizes[0] ?? nextCycleSize(nextColors.length),
-          quantity: "", suggested: true,
-        });
-        idx = nextColors.length - 1;
-      } else if (res.sizes[0] && !nextColors[idx]!.size.trim()) {
-        nextColors[idx] = { ...nextColors[idx]!, size: res.sizes[0]! };
-      }
-      const gkey = nextColors[idx]!.gkey;
-      colorsRef.current = nextColors;
-      setColors(nextColors);
-      setPending((prev) => ({
-        ...prev,
-        "": (prev[""] ?? []).filter((f) => f !== file),
-        [gkey]: [...(prev[gkey] ?? []), file],
-      }));
-      toast.success(
-        detected
-          ? `تم التعرف على اللون «${detected}» وربط الصورة به.`
-          : "تم التحليل، اكتب اسم اللون الخاص بهذه الصورة.",
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "فشل تحليل الصورة.");
-    } finally {
-      setAnalyzingId(null);
-    }
-  }
-
-  /** Analyze every image still waiting in the intake area, one by one. */
-  async function analyzeAllIntake() {
-    const files = [...(pendingRef.current[""] ?? [])].filter(
-      (f) => !analyzedIds.has(pendingFileKey(f)),
-    );
-    if (files.length === 0) return;
-    setGrouping({ done: 0, total: files.length });
-    for (const f of files) {
-      await analyzePendingFile(f);
-      setGrouping((p) => (p ? { ...p, done: p.done + 1 } : p));
-    }
-    setGrouping(null);
-  }
 
 
   /** Group picker rendered under each unsaved thumbnail. */
@@ -1738,40 +1477,19 @@ function EditProductDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Image intake — upload, then «تحليل» links the image to its colour */}
+          {/* Simple image upload and manual colour assignment. */}
           <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-primary">صور المنتج</span>
-              <div className="flex items-center gap-2">
-                {(pending[""] ?? []).filter((f) => !analyzedIds.has(pendingFileKey(f))).length > 1 && (
-                  <Button
-                    type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]"
-                    disabled={!!grouping}
-                    onClick={() => { void analyzeAllIntake(); }}
-                  >
-                    <Sparkles className="ml-1 h-3 w-3" /> تحليل الكل
-                  </Button>
-                )}
-                <label className={`inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 text-[11px] ${
-                  grouping ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/40 hover:text-primary"
-                }`}>
-                  <ImagePlus className="h-3.5 w-3.5" /> رفع صور
-                  <input type="file" accept="image/*" multiple className="hidden"
-                    disabled={!!grouping}
-                    onChange={(e) => { addIntakeFiles(e.target.files); e.currentTarget.value = ""; }} />
-                </label>
-              </div>
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 text-[11px] hover:border-primary/40 hover:text-primary">
+                <ImagePlus className="h-3.5 w-3.5" /> رفع صور
+                <input type="file" accept="image/*" multiple className="hidden"
+                  onChange={(e) => { addIntakeFiles(e.target.files); e.currentTarget.value = ""; }} />
+              </label>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              اضغط «تحليل» بجانب الصورة: تُستخرج بيانات المنتج الأساسية، ويوضع اللون في خانة اللون
-              وتُربط الصورة به كصورة لهذا اللون.
+              ارفع الصور، ثم اختر لون كل صورة من القائمة أسفلها.
             </p>
-            {grouping && (
-              <p className="flex items-center gap-1 text-[11px] text-primary">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                جارٍ تحليل الصور… ({grouping.done}/{grouping.total})
-              </p>
-            )}
             <div className="flex flex-wrap gap-2">
               {imagesFor(undefined).map((img) => (
                 <div key={img.id} className="relative">
@@ -1781,27 +1499,9 @@ function EditProductDialog({
                     className="absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-destructive-foreground">
                     <X className="h-2.5 w-2.5" />
                   </button>
-                  {!analyzedIds.has(img.id) && (
-                  <button type="button"
-                    onClick={() => analyze.mutate({ imageId: img.id, colorIndex: null })}
-                    disabled={analyze.isPending}
-                    className="mt-1 flex w-14 items-center justify-center gap-0.5 rounded-md border border-border/60 bg-background px-1 py-0.5 text-[9px] transition hover:border-primary/40 hover:text-primary disabled:opacity-60">
-                    {analyzingId === img.id
-                      ? <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                      : <Sparkles className="h-2.5 w-2.5" />}
-                    تحليل
-                  </button>
-                  )}
                 </div>
               ))}
-              {(pending[""] ?? [])
-                .map((f, realIndex) => ({ f, k: realIndex }))
-                // An analyzed image ALWAYS moves into its colour group — it is
-                // never left as a second copy in the intake area.
-                .filter(({ f }) => !analyzedIds.has(pendingFileKey(f)))
-                .map(({ f, k }) => {
-                const busy = analyzingId === `pending:${f.name}`;
-                return (
+              {(pending[""] ?? []).map((f, k) => { return (
                   <div key={`pg-${k}`} className="relative">
                     <img src={URL.createObjectURL(f)} alt={f.name}
                       className="h-14 w-14 rounded-lg border border-dashed border-primary/50 object-cover" />
@@ -1810,15 +1510,6 @@ function EditProductDialog({
                       className="absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-destructive-foreground">
                       <X className="h-2.5 w-2.5" />
                     </button>
-                    {!analyzedIds.has(pendingFileKey(f)) && (
-                    <button type="button"
-                      onClick={() => { void analyzePendingFile(f); }}
-                      disabled={busy || !!grouping}
-                      className="mt-1 flex w-14 items-center justify-center gap-0.5 rounded-md border border-border/60 bg-background px-1 py-0.5 text-[9px] transition hover:border-primary/40 hover:text-primary disabled:opacity-60">
-                      {busy ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
-                      تحليل
-                    </button>
-                    )}
                     <GroupPicker fromKey="" index={k} />
                   </div>
                 );
@@ -1858,11 +1549,6 @@ function EditProductDialog({
 
             {colors.map((c, i) => (
               <div key={c.gkey} className="space-y-2 rounded-lg bg-muted/30 p-2">
-                {c.suggested && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-                    <Sparkles className="h-3 w-3" /> مقترح من التحليل — عدّله كما تريد
-                  </span>
-                )}
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     value={c.label} placeholder="اسم اللون" className="max-w-[180px]"
@@ -1908,17 +1594,6 @@ function EditProductDialog({
                         className="absolute -left-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-destructive-foreground">
                         <X className="h-2.5 w-2.5" />
                       </button>
-                      {!analyzedIds.has(img.id) && (
-                      <button type="button"
-                        onClick={() => analyze.mutate({ imageId: img.id, colorIndex: i })}
-                        disabled={analyze.isPending}
-                        className="mt-1 flex w-14 items-center justify-center gap-0.5 rounded-md border border-border/60 bg-background px-1 py-0.5 text-[9px] transition hover:border-primary/40 hover:text-primary disabled:opacity-60">
-                        {analyzingId === img.id
-                          ? <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                          : <Sparkles className="h-2.5 w-2.5" />}
-                        تحليل
-                      </button>
-                      )}
                     </div>
                   ))}
                   {(pending[c.gkey] ?? []).map((f, k) => (
@@ -1949,7 +1624,7 @@ function EditProductDialog({
           <Button
             onClick={() => save.mutate()}
             disabled={
-              save.isPending || !!grouping ||
+              save.isPending ||
               !basicFieldsFilled({
                 name, material, price,
                 rows: colors.filter((c) => c.label.trim() && c.quantity.trim()).length,

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Globe, Plus, Trash2, Pencil, Upload, X,
-  Copy, ExternalLink, Save, Info, ShoppingBag, ScrollText, Truck, PhoneCall, Sparkles, Loader2,
+  Copy, ExternalLink, Save, Info, ShoppingBag, ScrollText, Truck, PhoneCall,
   MessageSquare,
 } from "lucide-react";
 
@@ -23,7 +23,6 @@ import {
 import {
   listWebsiteProducts, upsertWebsiteProduct, deleteWebsiteProduct,
   uploadProductImage, deleteProductImage, setProductPublished,
-  analyzeProductImage,
   type WebsiteProductDTO,
 } from "@/lib/website-products.functions";
 import {
@@ -413,43 +412,7 @@ function ProductEditor({
   );
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [attachTo, setAttachTo] = useState<{ kind: "none" | "color" | "size"; id: string }>({ kind: "none", id: "" });
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
-  const analyzeMut = useMutation({
-    mutationFn: async (imageId: string) => {
-      setAnalyzingId(imageId);
-      try {
-        return await analyzeProductImage({ data: { imageId } });
-      } finally {
-        setAnalyzingId(null);
-      }
-    },
-    onSuccess: (s) => {
-      let filled = 0;
-      if (s.name)        { setName(s.name); filled++; }
-      if (s.description) { setDescription(s.description); filled++; }
-      if (s.price != null) { setPrice(String(s.price)); filled++; }
-      if (s.currency)    { setCurrency(s.currency); filled++; }
-      if (s.colors.length) {
-        const existing = new Set(colors.map((c) => c.label.toLowerCase()));
-        const add = s.colors
-          .filter((l) => l && !existing.has(l.toLowerCase()))
-          .map((label) => ({ label, hex: null }));
-        if (add.length) { setColors([...colors, ...add]); filled++; }
-      }
-      if (s.sizes.length) {
-        const existing = new Set(sizes.map((c) => c.label.toLowerCase()));
-        const add = s.sizes
-          .filter((l) => l && !existing.has(l.toLowerCase()))
-          .map((label) => ({ label }));
-        if (add.length) { setSizes([...sizes, ...add]); filled++; }
-      }
-      toast.success(filled > 0
-        ? `Analyzed image — filled ${filled} field${filled === 1 ? "" : "s"}. Click Save to keep them.`
-        : "Analysis complete — no new fields extracted.");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Analysis failed."),
-  });
 
   // Persist current form to the products table. Returns the id.
   async function persist(): Promise<string> {
@@ -630,22 +593,7 @@ function ProductEditor({
                       )}
                       {s && <span className="rounded-full bg-muted px-2 py-0.5">Size: {s.label}</span>}
                     </div>
-                    <div className="border-t p-1.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        disabled={analyzingId === img.id}
-                        onClick={() => analyzeMut.mutate(img.id)}
-                      >
-                        {analyzingId === img.id ? (
-                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="mr-1 h-3.5 w-3.5" />
-                        )}
-                        Analyze Image
-                      </Button>
-                    </div>
+
                   </div>
                 );
               })}
