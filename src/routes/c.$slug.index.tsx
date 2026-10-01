@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ShoppingBag, ShoppingCart, X, Send, Info, Truck, PhoneCall, ScrollText, MessageSquare, UserCircle2, Flame, Tag } from "lucide-react";
+import { ShoppingBag, ShoppingCart, X, Send, Info, Truck, PhoneCall, ScrollText, MessageSquare, UserCircle2, Flame, Tag, ShieldCheck } from "lucide-react";
 import { bestOfferPlan, type OfferPlan } from "@/lib/product-offer-badge";
 import {
   validateAddress,
@@ -101,6 +101,7 @@ function BrandPageInner({ slug }: { slug: string }) {
   });
   const [openDetail, setOpenDetail] = useState<{ kind: "policy" | "contact" | "shipping"; id: string } | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [category, setCategory] = useState<string | null>(null);
   const cart = useCart();
   const session = useCustomerSession({ merchantId: q.data?.merchantId ?? null });
 
@@ -111,239 +112,199 @@ function BrandPageInner({ slug }: { slug: string }) {
   const brandName = q.data?.brandName || prettifySlug(slug);
 
   if (q.isLoading) {
-    return <div className="grid min-h-screen place-items-center bg-gradient-surface text-muted-foreground text-sm">Loading store…</div>;
+    return (
+      <div dir="rtl" className="store grid min-h-screen place-items-center">
+        <span className="store-display animate-pulse text-5xl">{brandName}</span>
+      </div>
+    );
   }
   const store: StorefrontData | undefined = q.data;
   if (!store || !store.found) {
     return (
-      <div className="grid min-h-screen place-items-center bg-gradient-surface px-6 text-center">
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-10 shadow-elegant backdrop-blur-xl">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-brand text-primary-foreground shadow-glow"><ShoppingBag className="h-6 w-6" /></div>
-          <h1 className="mt-4 text-2xl font-semibold">Store not found</h1>
-          <p className="mt-2 text-sm text-muted-foreground">No storefront exists at /c/{slug}.</p>
+      <div dir="rtl" className="store grid min-h-screen place-items-center px-6 text-center">
+        <div>
+          <p className="store-display text-[120px]">404</p>
+          <h1 className="store-label mt-2">المتجر غير موجود</h1>
+          <p className="mt-2 text-sm text-muted-foreground">لا يوجد متجر على الرابط /c/{slug}</p>
         </div>
       </div>
     );
   }
 
   const theme = THEMES[(store.themeKey ?? "").toLowerCase()] ?? THEMES.espresso;
-  const themeVars: React.CSSProperties = {
-    // Expose palette as CSS vars for descendant components.
-    ["--brand-primary" as any]: theme.primary,
-    ["--brand-secondary" as any]: theme.secondary,
-    ["--brand-accent" as any]: theme.accent,
-    ["--brand-bg" as any]: theme.bg,
-  };
+  const categories = Array.from(new Set(store.products.map((p) => p.category).filter((c): c is string => !!c)));
+  const shown = category ? store.products.filter((p) => p.category === category) : store.products;
+  const heroImg = store.products.find((p) => p.images[0])?.images[0] ?? null;
+  const onSale = store.products.some((p) => (p.offers ?? []).length > 0);
 
   return (
-    <div className="min-h-screen" style={{ ...themeVars, background: theme.bg }}>
-      <header
-        className="sticky top-0 z-30 border-b backdrop-blur-xl"
-        style={{ background: `${theme.bg}cc`, borderColor: `${theme.primary}22` }}
-      >
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {store.logoUrl ? (
-              <img src={store.logoUrl} alt={brandName}
-                className="h-10 w-10 rounded-full object-cover ring-2"
-                style={{ boxShadow: `0 0 0 2px ${theme.primary}` } as React.CSSProperties} />
-            ) : (
-              <div className="grid h-10 w-10 place-items-center rounded-full text-white font-bold"
-                style={{ background: theme.primary }}>
-                {brandName.slice(0, 1).toUpperCase()}
-              </div>
-            )}
-            <h1 className="truncate text-base font-semibold" style={{ color: theme.primary }}>{brandName}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm" variant="outline" className="gap-1.5 hidden sm:inline-flex"
-              style={{ borderColor: `${theme.primary}44`, color: theme.primary }}>
-              <Link to="/c/$slug/account" params={{ slug }}>
-                <UserCircle2 className="h-4 w-4" />
-                {session.data?.loggedIn ? "حسابي" : "تسجيل الدخول"}
-              </Link>
-            </Button>
-            <Button asChild size="icon" variant="outline" className="sm:hidden"
-              style={{ borderColor: `${theme.primary}44`, color: theme.primary }}
-              title={session.data?.loggedIn ? "حسابي" : "تسجيل الدخول"}
-              aria-label={session.data?.loggedIn ? "حسابي" : "تسجيل الدخول"}>
-              <Link to="/c/$slug/account" params={{ slug }}>
-                <UserCircle2 className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="gap-1.5 hidden sm:inline-flex"
-              style={{ borderColor: `${theme.primary}44`, color: theme.primary }}>
-              <Link to="/chat/$slug" params={{ slug }} search={{ mode: "continue" }}>
-                <MessageSquare className="h-4 w-4" />
-                المحادثة
-              </Link>
-            </Button>
-            <Button asChild size="icon" variant="outline" className="sm:hidden"
-              style={{ borderColor: `${theme.primary}44`, color: theme.primary }}
-              title="المحادثة">
-              <Link to="/chat/$slug" params={{ slug }} search={{ mode: "continue" }}>
-                <MessageSquare className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => { void q.refetch(); setCartOpen(true); }}
-              className="gap-2 text-white"
-              style={{ background: theme.primary }}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              السلة{cart.count > 0 ? ` (${cart.count})` : ""}
-            </Button>
+    <div dir="rtl" className="store min-h-screen">
+      {/* Announcement bar */}
+      <div className="overflow-hidden bg-primary py-2 text-primary-foreground">
+        <div className="store-marquee flex w-max gap-12 whitespace-nowrap">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span key={i} className="store-label">
+              {onSale ? "عروض لفترة محدودة · " : ""}شحن لكل المحافظات · الدفع بالطريقة التي تناسبك
+            </span>
+          ))}
+        </div>
+      </div>
 
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3 sm:px-8">
+          <nav className="hidden items-center gap-6 sm:flex">
+            <button onClick={() => setCategory(null)} className="store-label hover:underline underline-offset-8">الكل</button>
+            {categories.slice(0, 3).map((c) => (
+              <button key={c} onClick={() => setCategory(c)} className="store-label hover:underline underline-offset-8">{c}</button>
+            ))}
+          </nav>
+          <div className="sm:hidden" />
+          <Link to="/c/$slug" params={{ slug }} className="flex items-center justify-center gap-2">
+            {store.logoUrl && <img src={store.logoUrl} alt="" className="h-8 w-8 object-cover" />}
+            <span className="store-display truncate text-3xl sm:text-4xl">{brandName}</span>
+          </Link>
+          <div className="flex items-center justify-end gap-1">
+            <Link
+              to="/c/$slug/account" params={{ slug }}
+              aria-label={session.data?.loggedIn ? "حسابي" : "تسجيل الدخول"}
+              className="grid h-10 w-10 place-items-center hover:bg-muted"
+            >
+              <UserCircle2 className="h-5 w-5" strokeWidth={1.5} />
+            </Link>
+            <Link
+              to="/chat/$slug" params={{ slug }} search={{ mode: "continue" }}
+              aria-label="المحادثة"
+              className="grid h-10 w-10 place-items-center hover:bg-muted"
+            >
+              <MessageSquare className="h-5 w-5" strokeWidth={1.5} />
+            </Link>
+            <button
+              onClick={() => { void q.refetch(); setCartOpen(true); }}
+              aria-label="السلة"
+              className="relative grid h-10 w-10 place-items-center hover:bg-muted"
+            >
+              <ShoppingBag className="h-5 w-5" strokeWidth={1.5} />
+              {cart.count > 0 && (
+                <span className="absolute left-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {cart.count}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="mx-auto w-full max-w-6xl px-4 pt-10 pb-6 text-center">
-        {store.logoUrl && (
-          <img src={store.logoUrl} alt={brandName}
-            className="mx-auto mb-4 h-24 w-24 rounded-full object-cover shadow-lg ring-4"
-            style={{ boxShadow: `0 8px 30px ${theme.primary}33`, ["--tw-ring-color" as any]: `${theme.accent}66` }} />
-        )}
-        <h2 className="text-4xl font-bold tracking-tight" style={{ color: theme.primary }}>
-          {brandName}
-        </h2>
-        {store.brandDescription && (
-          <p className="mx-auto mt-3 max-w-2xl text-base" style={{ color: `${theme.primary}cc` }}>
-            {store.brandDescription}
-          </p>
-        )}
-        <div className="mx-auto mt-4 h-1 w-16 rounded-full" style={{ background: theme.accent }} />
+      <section className="relative isolate overflow-hidden bg-secondary">
+        <div className="mx-auto grid min-h-[70vh] w-full max-w-7xl items-end px-4 pb-12 pt-24 sm:px-8">
+          {heroImg && (
+            <img src={heroImg} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+          )}
+          {heroImg && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />}
+          <div className={heroImg ? "text-primary-foreground" : ""}>
+            <p className="store-label">المجموعة الجديدة</p>
+            <h2 className="store-display mt-3 max-w-4xl text-7xl sm:text-9xl">{brandName}</h2>
+            {store.brandDescription && (
+              <p className="mt-4 max-w-xl text-base opacity-90">{store.brandDescription}</p>
+            )}
+            <a
+              href="#shop"
+              className={`store-label mt-8 inline-flex h-12 items-center px-10 transition ${heroImg ? "bg-background text-foreground hover:bg-background/85" : "bg-primary text-primary-foreground hover:bg-primary/85"}`}
+            >
+              تسوّق الآن
+            </a>
+          </div>
+        </div>
       </section>
 
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[240px_1fr]">
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <SideList
-            store={store}
-            theme={theme}
-            onOpen={(kind, id) => setOpenDetail({ kind, id })}
-          />
-        </aside>
+      <main id="shop" className="mx-auto w-full max-w-7xl scroll-mt-20 px-4 py-14 sm:px-8">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
+          <h2 className="store-display text-5xl sm:text-6xl">{category ?? "كل المنتجات"}</h2>
+          <span className="store-label text-muted-foreground">{shown.length} قطعة</span>
+        </div>
+        {categories.length > 0 && (
+          <div className="-mx-4 mb-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+            {[null, ...categories].map((c) => (
+              <button
+                key={c ?? "all"}
+                onClick={() => setCategory(c)}
+                className={`store-label shrink-0 border px-4 py-2 transition ${category === c ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}
+              >
+                {c ?? "الكل"}
+              </button>
+            ))}
+          </div>
+        )}
+        {shown.length === 0 ? (
+          <div className="border border-dashed border-border py-24 text-center">
+            <p className="store-display text-4xl">قريباً</p>
+            <p className="mt-2 text-sm text-muted-foreground">لا توجد منتجات منشورة بعد.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-5 lg:grid-cols-4">
+            {shown.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        )}
+      </main>
 
-        <main className="min-w-0 space-y-6">
-          <section>
-            <h2 className="mb-4 text-2xl font-semibold" style={{ color: theme.primary }}>Products</h2>
-            {store.products.length === 0 ? (
-              <div className="rounded-2xl border border-border/60 bg-white/70 p-10 text-center text-sm text-muted-foreground shadow-card">
-                No products published yet.
+      {/* Service strip */}
+      <section className="border-y border-border">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-x-reverse">
+          {[
+            { Icon: Truck, t: "شحن سريع", d: "لكل المحافظات" },
+            { Icon: ShieldCheck, t: "دفع آمن", d: "بالطريقة التي تناسبك" },
+            { Icon: MessageSquare, t: "خدمة العملاء", d: "نرد عليك في أسرع وقت" },
+          ].map(({ Icon, t, d }) => (
+            <div key={t} className="flex items-center gap-4 px-6 py-6">
+              <Icon className="h-6 w-6 shrink-0" strokeWidth={1.25} />
+              <div>
+                <div className="store-label">{t}</div>
+                <div className="text-sm text-muted-foreground">{d}</div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {store.products.map((p) => (
-                  <ProductCard key={p.id} product={p} theme={theme} />
-                ))}
-              </div>
-            )}
-          </section>
-        </main>
-      </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {openDetail && (
-        <DetailModal
-          store={store}
-          selection={openDetail}
-          onClose={() => setOpenDetail(null)}
-        />
+        <DetailModal store={store} selection={openDetail} onClose={() => setOpenDetail(null)} />
       )}
       {cartOpen && (
         <CartDrawer slug={slug} onClose={() => setCartOpen(false)} theme={theme} merchantId={store.merchantId ?? null} brandName={brandName} store={store} />
       )}
 
-      <footer className="border-t bg-white/40 py-8" style={{ borderColor: `${theme.primary}22` }}>
-        <p className="text-center text-xs" style={{ color: `${theme.primary}99` }}>
-          © {new Date().getFullYear()} {brandName}
-        </p>
+      <footer className="bg-primary text-primary-foreground">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-14 sm:grid-cols-3 sm:px-8">
+          <div>
+            <p className="store-display text-5xl">{brandName}</p>
+            {store.brandDescription && <p className="mt-3 max-w-xs text-sm opacity-70">{store.brandDescription}</p>}
+          </div>
+          <FooterList title="الشحن" items={store.shipping.map((s) => ({ id: s.id, label: [s.country, s.region].filter(Boolean).join(" / ") || "الشحن" }))} onOpen={(id) => setOpenDetail({ kind: "shipping", id })} />
+          <FooterList title="تواصل معنا" items={store.contacts.map((c) => ({ id: c.id, label: c.label || c.value }))} onOpen={(id) => setOpenDetail({ kind: "contact", id })} />
+        </div>
+        <div className="border-t border-primary-foreground/15 py-5 text-center">
+          <span className="store-label opacity-60">© {new Date().getFullYear()} {brandName}</span>
+        </div>
       </footer>
     </div>
   );
 }
 
-function SideList({
-  store, onOpen, theme: _theme,
-}: {
-  store: StorefrontData;
-  onOpen: (kind: "policy" | "contact" | "shipping", id: string) => void;
-  theme?: any;
-}) {
-  const polGroups = groupBy(store.policies, (p) => p.kind || "other");
-  const contactGroups = groupBy(store.contacts, (c) => c.kind || "other");
-  const hasShipping = store.shipping.length > 0;
-  const hasAnything = store.policies.length + store.contacts.length + store.shipping.length > 0;
-
-  if (!hasAnything) {
-    return <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-xs text-muted-foreground shadow-card backdrop-blur">No info published yet.</div>;
-  }
+function FooterList({ title, items, onOpen }: { title: string; items: { id: string; label: string }[]; onOpen: (id: string) => void }) {
+  if (items.length === 0) return <div />;
   return (
-    <nav className="space-y-4 text-sm">
-      {Object.keys(polGroups).length > 0 && (
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-card backdrop-blur">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <ScrollText className="h-3.5 w-3.5" /> Policies
-          </div>
-          <ul className="space-y-1">
-            {Object.entries(polGroups).map(([kind, items]) => (
-              <li key={kind}>
-                <div className="text-xs text-muted-foreground">{kind}</div>
-                <ul className="ml-2 space-y-0.5">
-                  {items.map((it) => (
-                    <li key={it.id}>
-                      <button onClick={() => onOpen("policy", it.id)} className="block w-full rounded-md px-2 py-1 text-right transition hover:bg-muted/50 hover:text-primary">
-                        {it.title}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {Object.keys(contactGroups).length > 0 && (
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-card backdrop-blur">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <PhoneCall className="h-3.5 w-3.5" /> Contact
-          </div>
-          <ul className="space-y-1">
-            {Object.entries(contactGroups).map(([kind, items]) => (
-              <li key={kind}>
-                <div className="text-xs text-muted-foreground">{kind}</div>
-                <ul className="ml-2 space-y-0.5">
-                  {items.map((it) => (
-                    <li key={it.id}>
-                      <button onClick={() => onOpen("contact", it.id)} className="block w-full rounded-md px-2 py-1 text-right transition hover:bg-muted/50 hover:text-primary">
-                        {it.label || it.value}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {hasShipping && (
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-card backdrop-blur">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <Truck className="h-3.5 w-3.5" /> Shipping
-          </div>
-          <ul className="space-y-0.5">
-            {store.shipping.map((s) => (
-              <li key={s.id}>
-                <button onClick={() => onOpen("shipping", s.id)} className="block w-full rounded-md px-2 py-1 text-right transition hover:bg-muted/50 hover:text-primary">
-                  {[s.country, s.region].filter(Boolean).join(" / ") || "Shipping"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </nav>
+    <div>
+      <p className="store-label opacity-60">{title}</p>
+      <ul className="mt-4 space-y-2">
+        {items.map((it) => (
+          <li key={it.id}>
+            <button onClick={() => onOpen(it.id)} className="text-sm hover:underline underline-offset-4">{it.label}</button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -428,7 +389,7 @@ function ProductOfferBox({
   );
 }
 
-function ProductCard({ product, theme }: { product: StorefrontData["products"][number]; theme?: any }) {
+function ProductCard({ product }: { product: StorefrontData["products"][number] }) {
   const cart = useCart();
   const variants: VariantLike[] = Array.isArray(product.variants) ? product.variants : [];
   // Stock is only meaningful when the merchant tracks it for this product.
@@ -468,8 +429,6 @@ function ProductCard({ product, theme }: { product: StorefrontData["products"][n
   const clampedQty = Math.min(Math.max(qty, 1), Math.max(maxQty, 1));
 
   const img = product.images[0];
-  const primary = theme?.primary ?? "hsl(var(--primary))";
-  const accent = theme?.accent ?? primary;
   const outOfStock = anyStockInfo && (inStock.length === 0 || (selectedStock ?? 0) <= 0);
   const alreadyInCart = cart.lines.some(
     (l) =>
@@ -487,126 +446,125 @@ function ProductCard({ product, theme }: { product: StorefrontData["products"][n
   });
   const cur = product.currency ?? "";
   const showLow = selectedStock != null && selectedStock > 0 && selectedStock <= LOW_STOCK_THRESHOLD;
+  const addToCart = () => {
+    if (alreadyInCart) { toast.info("تمت الإضافة بالفعل"); return; }
+    cart.add({
+      productId: product.id, name: product.name,
+      price: unitPrice, currency: product.currency, image: img ?? null,
+      color, size: effectiveSize, quantity: clampedQty,
+    });
+    toast.success("تمت الإضافة إلى السلة");
+  };
+  const img2 = product.images[1];
+  const sale = Boolean(plan?.qualifies && plan.discountNow > 0);
   return (
-    <article
-      className="group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-glow"
-      style={{ borderColor: `${primary}22` }}
-    >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+    <article className="group flex flex-col">
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
         {img ? (
-          <img src={img} alt={product.name} className="h-full w-full object-cover transition group-hover:scale-105" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+          <>
+            <img src={img} alt={product.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+            {img2 && (
+              <img src={img2} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-700 group-hover:opacity-100" />
+            )}
+          </>
         ) : (
-          <div className="grid h-full place-items-center" style={{ background: `${primary}0a` }}>
-            <ShoppingBag className="h-10 w-10" style={{ color: `${primary}55` }} />
+          <div className="grid h-full place-items-center">
+            <ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1} />
           </div>
         )}
-        {plan && (
-          <span className="absolute right-2 top-2 rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-destructive-foreground shadow">
-            {plan.badge}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-semibold leading-tight" style={{ color: primary }}>{product.name}</h3>
-          {unitPrice != null && (
-            <span className="flex shrink-0 items-center gap-1.5">
-              {plan?.qualifies && plan.discountNow > 0 && (
-                <span className="text-xs text-muted-foreground line-through">{unitPrice} {cur}</span>
-              )}
-              <span className="rounded-full px-2 py-0.5 text-sm font-semibold text-white" style={{ background: accent }}>
-                {plan?.qualifies && plan.discountNow > 0 ? plan.unitPriceNow : unitPrice} {cur}
-              </span>
-            </span>
+        <div className="absolute right-2 top-2 flex flex-col items-start gap-1">
+          {plan && (
+            <span className="store-label bg-destructive px-2 py-1 text-destructive-foreground">{plan.badge}</span>
+          )}
+          {showLow && (
+            <span className="store-label bg-background px-2 py-1 text-foreground">آخر {selectedStock} قطع</span>
           )}
         </div>
+        {outOfStock && (
+          <div className="absolute inset-0 grid place-items-center bg-background/60">
+            <span className="store-label bg-background px-3 py-1.5">نفدت الكمية</span>
+          </div>
+        )}
+        {/* Quick add */}
+        {!outOfStock && (
+          <button
+            type="button"
+            disabled={alreadyInCart}
+            onClick={addToCart}
+            className="store-label absolute inset-x-2 bottom-2 h-11 bg-background/95 text-foreground opacity-100 transition hover:bg-primary hover:text-primary-foreground disabled:opacity-80 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
+          >
+            {alreadyInCart ? "في السلة ✓" : "أضف إلى السلة +"}
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2 pt-3">
+        {product.category && <span className="store-label text-muted-foreground">{product.category}</span>}
+        <h3 className="text-sm font-medium leading-snug sm:text-[15px]">{product.name}</h3>
+        {unitPrice != null && (
+          <div className="flex items-baseline gap-2 text-sm">
+            <span className={`font-semibold ${sale ? "text-destructive" : ""}`}>
+              {sale ? plan!.unitPriceNow : unitPrice} {cur}
+            </span>
+            {sale && <span className="text-xs text-muted-foreground line-through">{unitPrice} {cur}</span>}
+          </div>
+        )}
+
+        {availableColors.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {availableColors.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { setColor(c); setQty(1); }}
+                className={`border px-2 py-0.5 text-[11px] transition ${color === c ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+        {sizesForColor.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {sizesForColor.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => { setSize(s); setQty(1); }}
+                className={`grid h-8 min-w-8 place-items-center border px-1.5 text-[11px] font-semibold transition ${effectiveSize === s ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
         {plan && (
           <ProductOfferBox plan={plan} currency={cur} quantity={clampedQty} onPickQty={(n) => setQty(n)} />
         )}
-        {product.category && (
-          <div className="text-xs text-muted-foreground">{product.category}</div>
-        )}
-        {product.description && (
-          <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
-        )}
-        {(availableColors.length > 0 || sizesForColor.length > 0) && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {availableColors.length > 0 && (
-              <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>اللون</span>
-                <select
-                  value={color ?? ""}
-                  onChange={(e) => { setColor(e.target.value || null); setQty(1); }}
-                  className="rounded-md border bg-background px-2 py-1 text-xs"
-                  style={{ borderColor: `${primary}44` }}
-                >
-                  {availableColors.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </label>
-            )}
-            {sizesForColor.length > 0 && (
-              <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>المقاس</span>
-                <select
-                  value={effectiveSize ?? ""}
-                  onChange={(e) => { setSize(e.target.value || null); setQty(1); }}
-                  className="rounded-md border bg-background px-2 py-1 text-xs"
-                  style={{ borderColor: `${primary}44` }}
-                >
-                  {sizesForColor.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-            )}
+        {selectedStock != null && showLow && (
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-destructive">
+            <Flame className="h-3 w-3" /> متبقي {selectedStock} {selectedStock === 1 ? "قطعة" : "قطع"} فقط
           </div>
         )}
-        {selectedStock != null && (
-          showLow ? (
-            <div className="flex items-center gap-1 text-xs font-semibold text-destructive">
-              <Flame className="h-3.5 w-3.5" />
-              متبقي {selectedStock} {selectedStock === 1 ? "قطعة" : "قطع"} فقط
+
+        {!outOfStock && (
+          <div className="mt-auto flex items-stretch gap-2 pt-1">
+            <div className="flex h-10 items-center border border-border">
+              <button type="button" aria-label="زيادة" className="h-full w-8 hover:bg-muted" onClick={() => setQty(Math.min(clampedQty + 1, maxQty))}>+</button>
+              <span className="w-6 text-center text-sm">{clampedQty}</span>
+              <button type="button" aria-label="نقص" className="h-full w-8 hover:bg-muted" onClick={() => setQty(Math.max(clampedQty - 1, 1))}>−</button>
             </div>
-          ) : (
-            <div className="text-xs" style={{ color: selectedStock > 0 ? `${primary}aa` : "hsl(var(--destructive))" }}>
-              {selectedStock > 0 ? `المتاح حالياً: ${selectedStock}` : "غير متوفر حالياً"}
-            </div>
-          )
+            <button
+              type="button"
+              disabled={alreadyInCart}
+              onClick={addToCart}
+              className="store-label h-10 flex-1 bg-primary text-primary-foreground transition hover:bg-primary/85 disabled:bg-muted disabled:text-muted-foreground"
+            >
+              {alreadyInCart ? "في السلة" : "أضف"}
+            </button>
+          </div>
         )}
-        <div className="mt-auto flex items-center gap-2 pt-2">
-          <label className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span>الكمية</span>
-            <Input
-              type="number"
-              min={1}
-              max={maxQty}
-              value={clampedQty}
-              onChange={(e) => setQty(Number(e.target.value) || 1)}
-              className="h-9 w-16"
-              disabled={outOfStock}
-            />
-          </label>
-          <Button
-            size="sm"
-            className="flex-1 text-white"
-            style={{ background: primary }}
-            disabled={outOfStock || alreadyInCart}
-            onClick={() => {
-              // The same piece (product + colour + size) is added once only.
-              if (alreadyInCart) {
-                toast.info("تمت الإضافة بالفعل");
-                return;
-              }
-              cart.add({
-                productId: product.id, name: product.name,
-                price: unitPrice, currency: product.currency, image: img ?? null,
-                color, size: effectiveSize, quantity: clampedQty,
-              });
-              toast.success("تمت الإضافة إلى السلة");
-            }}
-          >
-            <ShoppingCart className="ml-1 h-4 w-4" />{" "}
-            {outOfStock ? "غير متوفر" : alreadyInCart ? "تمت الإضافة بالفعل" : "أضف إلى السلة"}
-          </Button>
-        </div>
       </div>
     </article>
   );
@@ -929,11 +887,11 @@ function CartDrawer({
 
 
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose} dir="rtl">
-      <div className="flex-1 bg-black/40" />
-      <div className="flex h-full w-full max-w-md flex-col bg-background shadow-elegant" onClick={(e) => e.stopPropagation()}>
+    <div className="store fixed inset-0 z-50 flex" onClick={onClose} dir="rtl">
+      <div className="flex-1 bg-foreground/50 backdrop-blur-[2px]" />
+      <div className="flex h-full w-full max-w-md flex-col bg-background shadow-2xl animate-in slide-in-from-left duration-300" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b p-4">
-          <h3 className="text-lg font-semibold">
+          <h3 className="store-display text-3xl">
             {step === "cart" && "سلة الشراء"}
             {step === "shipping" && "منطقة الشحن"}
             {step === "payment" && "طريقة الدفع"}
@@ -946,8 +904,8 @@ function CartDrawer({
         <div className="flex-1 overflow-y-auto p-4">
           {step === "done" && receipt && (
             <div className="space-y-3 text-sm">
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
-                <div className="font-semibold">
+              <div className="bg-primary p-5 text-primary-foreground">
+                <div className="store-display text-3xl">
                   {receipt.requiresPayment ? "تم تسجيل الأوردر — فاضل إتمام الدفع" : "تم إنشاء الأوردر بنجاح ✅"}
                 </div>
                 <div className="mt-1">رقم الأوردر: <span className="font-mono">{receipt.orderNumber}</span></div>
@@ -1022,12 +980,12 @@ function CartDrawer({
 
           {step === "cart" && (
             cart.lines.length === 0 ? (
-              <p className="text-sm text-muted-foreground">السلة فارغة.</p>
+              <div className="py-16 text-center"><ShoppingBag className="mx-auto h-10 w-10" strokeWidth={1} /><p className="store-display mt-4 text-3xl">سلتك فارغة</p><p className="mt-1 text-sm text-muted-foreground">أضف قطعك المفضلة لتظهر هنا.</p></div>
             ) : (
               <ul className="space-y-3">
                 {cart.lines.map((l) => (
-                  <li key={`${l.productId}-${l.color ?? ""}-${l.size ?? ""}`} className="flex items-center gap-3 rounded-lg border p-2">
-                    {l.image && <img src={l.image} alt="" className="h-12 w-12 rounded object-cover" />}
+                  <li key={`${l.productId}-${l.color ?? ""}-${l.size ?? ""}`} className="flex items-center gap-3 border-b border-border pb-3">
+                    {l.image ? <img src={l.image} alt="" className="h-24 w-[72px] shrink-0 bg-secondary object-cover" /> : <div className="h-24 w-[72px] shrink-0 bg-secondary" />}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{l.name}</div>
                       {(l.color || l.size) && (
@@ -1059,7 +1017,7 @@ function CartDrawer({
                 <ul className="space-y-2">
                   {store.shipping.map((s) => (
                     <li key={s.id}>
-                      <label className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 ${shippingId === s.id ? "border-primary bg-primary/5" : ""}`}>
+                      <label className={`flex cursor-pointer items-start gap-2 border p-4 transition ${shippingId === s.id ? "border-primary bg-secondary" : "border-border hover:border-primary"}`}>
                         <input type="radio" name="shipping" checked={shippingId === s.id} onChange={() => setShippingId(s.id)} className="mt-1" />
                         <span className="flex-1">
                           <span className="font-medium">{[s.country, s.region].filter(Boolean).join(" / ") || "الشحن"}</span>
@@ -1084,7 +1042,7 @@ function CartDrawer({
                 <ul className="space-y-2">
                   {store.paymentMethods.map((m) => (
                     <li key={m.id}>
-                      <label className={`flex cursor-pointer items-center gap-2 rounded-lg border p-3 ${paymentName === m.name ? "border-primary bg-primary/5" : ""}`}>
+                      <label className={`flex cursor-pointer items-center gap-2 border p-4 transition ${paymentName === m.name ? "border-primary bg-secondary" : "border-border hover:border-primary"}`}>
                         <input type="radio" name="payment" checked={paymentName === m.name} onChange={() => setPaymentName(m.name)} />
                         <span className="font-medium">{m.name}</span>
                       </label>
@@ -1189,7 +1147,7 @@ function CartDrawer({
           <div className="space-y-3 border-t p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">الإجمالي</span>
-              <span className="font-semibold">{total.toFixed(2)} {currency ?? ""}</span>
+              <span className="store-display text-3xl">{total.toFixed(2)} {currency ?? ""}</span>
             </div>
             <div className="flex gap-2">
               {step !== "cart" && (
