@@ -63,7 +63,6 @@ const TILES: Tile[] = [
   { to: "/earnings", label: "الأرباح", description: "ملخص التحصيل", icon: <TrendingUp className="h-6 w-6" />, tone: "bg-hub-mint-soft text-hub-mint", perm: "earnings" },
   { to: "/shipping", label: "الشحن", description: "المناطق والتكلفة", icon: <Truck className="h-6 w-6" />, tone: "bg-hub-sky-soft text-hub-sky", perm: "brand_data" },
   { to: "/settings/payment-methods", label: "الدفع", description: "طرق استلام المال", icon: <CreditCard className="h-6 w-6" />, tone: "bg-hub-coral-soft text-hub-coral", perm: "settings" },
-  { to: "/policies", label: "السياسات", description: "شروط متجرك", icon: <ScrollText className="h-6 w-6" />, tone: "bg-hub-gold-soft text-hub-gold", perm: "brand_data" },
   { to: "/contacts", label: "التواصل", description: "بيانات الاتصال", icon: <PhoneCall className="h-6 w-6" />, tone: "bg-hub-sky-soft text-hub-sky", perm: "brand_data" },
 ];
 
@@ -81,12 +80,6 @@ function DashboardPage() {
   const can = (perm: StaffPermission) => (actor ? hasPermission(actor, perm) : false);
   const isOwner = actor?.isOwner ?? false;
 
-  const convos = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () => listConversations(),
-    refetchInterval: 15000,
-    enabled: can("conversations"),
-  });
   const notifs = useQuery({
     queryKey: ["notifications"],
     queryFn: () => listNotifications(),
@@ -102,10 +95,6 @@ function DashboardPage() {
   const visibleTiles = useMemo(() => TILES.filter((t) => can(t.perm)), [actor]);
 
 
-  const activeCount = (convos.data ?? []).filter((c) => {
-    const t = new Date(c.last_message_at ?? c.created_at).getTime();
-    return Number.isFinite(t) && Date.now() - t <= ACTIVE_NOW_THRESHOLD_MS;
-  }).length;
   const unread = (notifs.data ?? []).filter((n) => !n.is_read).length;
   const orderCount = earnings.data?.orderCount ?? 0;
   const pendingProfit = earnings.data?.pendingProfit ?? 0;
@@ -143,17 +132,6 @@ function DashboardPage() {
                 <span>
                   <span className="block text-xs text-muted-foreground">الطلبات</span>
                   <span className="block text-2xl font-bold">{earnings.isLoading ? "—" : orderCount}</span>
-                </span>
-              </Link>
-              )}
-              {can("conversations") && (
-              <Link to="/missing-info" className="hub-card flex min-h-28 flex-col justify-between p-4">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
-                  <MessagesSquare className="h-5 w-5" />
-                </span>
-                <span>
-                  <span className="block text-xs text-muted-foreground">محادثات نشطة</span>
-                  <span className="block text-2xl font-bold">{convos.isLoading ? "—" : activeCount}</span>
                 </span>
               </Link>
               )}
@@ -195,17 +173,6 @@ function DashboardPage() {
 
           <section className="space-y-2.5">
             <h2 className="px-1 text-sm font-bold">روابط مساعدة</h2>
-            {can("conversations") && <InterventionsLink />}
-            {can("conversations") && (
-
-            <Link to="/missing-info" className="hub-card flex items-center gap-3 p-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted text-foreground">
-                <HelpCircle className="h-5 w-5" />
-              </span>
-              <span className="min-w-0 flex-1 text-sm font-semibold">معلومات ناقصة</span>
-              <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </Link>
-            )}
             {can("settings") && (
             <Link to="/settings/notifications" className="hub-card flex items-center gap-3 p-4">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted text-foreground">
@@ -226,178 +193,12 @@ function DashboardPage() {
             )}
           </section>
 
-           {can("conversations") && <BrandAgentSettings />}
-           {can("conversations") && <ConversationsSection />}
            <NotificationsSection rows={notifs.data ?? []} loading={notifs.isLoading} error={notifs.error} />
         </div>
       </div>
 
       <HubTabBar />
     </div>
-  );
-}
-
-function BrandAgentSettings() {
-  const qc = useQueryClient();
-  const q = useQuery({
-    queryKey: ["merchant-agent-settings"],
-    queryFn: () => getMerchantAgentSettings(),
-  });
-  const m = useMutation({
-    mutationFn: (disabled: boolean) => setMerchantAgentGloballyDisabled({ data: { disabled } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["merchant-agent-settings"] });
-      qc.invalidateQueries({ queryKey: ["conversations"] });
-    },
-    onError: (e: any) => toast.error(e?.message || "تعذر التحديث"),
-  });
-  const disabled = q.data?.agent_globally_disabled ?? false;
-  return (
-    <section className="space-y-3">
-      <div className="hub-card overflow-hidden">
-        <Link to="/orders" hash="messages" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold">
-          <Settings2 className="h-4 w-4 text-muted-foreground" />
-          رسائل حالات الطلبات
-          <ArrowLeft className="me-auto h-4 w-4 text-muted-foreground" />
-        </Link>
-      </div>
-    </section>
-  );
-}
-
-// ============================================================================
-// Conversations section
-// ============================================================================
-
-// Threshold (ms) under which the latest message counts as "active now" and the
-// conversation gets the green dot. Change this one constant to tune sensitivity.
-const ACTIVE_NOW_THRESHOLD_MS = 5 * 60 * 1000;
-
-function ConversationsSection() {
-  const q = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () => listConversations(),
-    refetchInterval: 15000,
-  });
-
-  const filtered: ConversationRow[] = q.data ?? [];
-
-  const now = Date.now();
-
-  return (
-    <section>
-      <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-          <MessagesSquare className="h-4 w-4" />
-          المحادثات
-        </h2>
-        <span className="text-xs text-muted-foreground">
-          {q.isLoading ? "جارٍ التحميل…" : `${filtered.length} محادثة`}
-        </span>
-      </div>
-
-      {q.isError && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          {(q.error as Error)?.message || "تعذر تحميل المحادثات."}
-        </div>
-      )}
-
-      {!q.isLoading && filtered.length === 0 && !q.isError && (
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-8 text-center text-sm text-muted-foreground shadow-card backdrop-blur">
-          لا توجد محادثات لعرضها.
-        </div>
-      )}
-
-      <ul className="space-y-2">
-        {filtered.map((c) => (
-          <ConversationListItem key={c.id} c={c} now={now} />
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function ConversationListItem({ c, now }: { c: ConversationRow; now: number }) {
-  const qc = useQueryClient();
-  const lastIso = c.last_message_at ?? c.created_at;
-  const lastMs = new Date(lastIso).getTime();
-  const isActive =
-    Number.isFinite(lastMs) && now - lastMs <= ACTIVE_NOW_THRESHOLD_MS;
-
-  const toggle = useMutation({
-    mutationFn: (enabled: boolean) =>
-      setConversationAgent({ data: { id: c.id, enabled } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
-    onError: (e: any) => toast.error(e?.message || "تعذر التحديث"),
-  });
-
-  const displayName =
-    (c.customer_name && c.customer_name.trim()) ||
-    (c.visitor_number ? `زائر #${c.visitor_number}` : "زائر");
-
-  return (
-    <li className="rounded-xl border border-border/60 bg-background/70 p-3 backdrop-blur-sm shadow-card">
-      <div className="flex items-start gap-3">
-        <Link
-          to="/conversation/$id"
-          params={{ id: c.id }}
-          className="flex flex-1 min-w-0 items-start gap-3 rounded-lg -m-1 p-1 hover:bg-muted/40"
-        >
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border">
-            <MessagesSquare className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-sm font-semibold">{displayName}</span>
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] ${
-                  isActive
-                    ? "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/30"
-                    : "bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/30"
-                }`}
-                title={formatTime(lastIso)}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-                {isActive ? "نشط الآن" : "غير نشط"}
-              </span>
-              <span className="ms-auto text-[11px] text-muted-foreground">
-                {formatTime(lastIso)}
-              </span>
-            </div>
-            {c.last_message_preview && (
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground line-clamp-2">
-                {c.last_message_preview}
-              </p>
-            )}
-          </div>
-        </Link>
-      </div>
-    </li>
-  );
-}
-
-
-/** Helper link that also shows how many conversations are waiting for a human. */
-function InterventionsLink() {
-  const q = useQuery({
-    queryKey: ["interventions"],
-    queryFn: () => listInterventions(),
-    refetchInterval: 30000,
-  });
-  const count = (q.data ?? []).length;
-  return (
-    <Link to="/interventions" className="hub-card flex items-center gap-3 p-4">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-destructive/10 text-destructive">
-        <LifeBuoy className="h-5 w-5" />
-      </span>
-      <span className="min-w-0 flex-1 text-sm font-semibold">استدعاء التدخل</span>
-      {count > 0 && (
-        <span className="rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-destructive-foreground">
-          {count}
-        </span>
-      )}
-      <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-    </Link>
   );
 }
 
@@ -441,10 +242,9 @@ function formatTime(iso: string) {
   } catch { return iso; }
 }
 
-function notificationTarget(row: NotificationRow): { to: "/orders" | "/missing-info" | "/conversation/$id"; params?: { id: string } } {
-  if (row.type === "new_order") return { to: "/orders" };
-  if (row.type === "missing_information" || row.type === "missing_info_followup") return { to: "/missing-info" };
-  return { to: "/conversation/$id", params: { id: row.conversation_id } };
+
+function notificationTarget(_row: NotificationRow): { to: "/orders"; params?: undefined } {
+  return { to: "/orders" };
 }
 
 function NotificationsSection({ rows, loading, error }: { rows: NotificationRow[]; loading: boolean; error: unknown }) {

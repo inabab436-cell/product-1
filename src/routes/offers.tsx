@@ -773,14 +773,12 @@ function OffersPage() {
                       {o.beneficiaries.map((b) =>
                         b.conversation_id ? (
                           <li key={b.id}>
-                            <Link
-                              to="/conversation/$id"
-                              params={{ id: b.conversation_id }}
+                            <div
                               className="block rounded-lg border border-border/60 px-3 py-2 text-xs hover:bg-muted/60"
                             >
                               استفاد عميل بالخصم الآن، وقيمة الطلب الخاص به{" "}
                               {b.order_total ?? 0}
-                            </Link>
+                            </div>
                           </li>
                         ) : (
                           <li
@@ -815,13 +813,11 @@ function OffersPage() {
                         );
                         return b.conversation_id ? (
                           <li key={b.order_id}>
-                            <Link
-                              to="/conversation/$id"
-                              params={{ id: b.conversation_id }}
+                            <div
                               className="block rounded-lg border border-dashed border-border/60 px-3 py-2 text-xs hover:bg-muted/60"
                             >
                               {body}
-                            </Link>
+                            </div>
                           </li>
                         ) : (
                           <li

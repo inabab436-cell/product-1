@@ -141,9 +141,7 @@ function AwaitingPaymentPage() {
                     className="rounded-xl border border-border/60 bg-background/70 p-3"
                   >
                     <div className="flex flex-wrap items-start gap-3">
-                      <Link
-                        to="/conversation/$id"
-                        params={{ id: c.id }}
+                      <div
                         className="min-w-0 flex-1 rounded-lg -m-1 p-1 hover:bg-muted/40"
                       >
                         <div className="flex items-center gap-2">
@@ -161,7 +159,7 @@ function AwaitingPaymentPage() {
                             {c.last_message_preview}
                           </p>
                         )}
-                      </Link>
+                      </div>
                       <div className="flex flex-col items-stretch gap-1">
                         <Button
                           size="sm"
