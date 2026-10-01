@@ -1235,7 +1235,9 @@ export const Route = createFileRoute("/api/chat-ai")({
           // already persisted above so the merchant can reply manually.
           const agentGloballyDisabled = !!(merchant as any)?.agent_globally_disabled;
           const conversationAgentEnabled = (convo as any).agent_enabled !== false;
-          if (agentGloballyDisabled || !conversationAgentEnabled) {
+          // The AI agent feature is removed: never generate an automatic reply.
+          void agentGloballyDisabled; void conversationAgentEnabled;
+          if (true) {
             const msgs = await loadMessages(conversation_id);
             return respond({
               conversation_id,

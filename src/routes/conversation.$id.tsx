@@ -147,24 +147,7 @@ function ConversationPage() {
               <div className="truncate text-sm font-semibold">{title}</div>
             </div>
           </div>
-          <label className="flex items-center gap-2 text-xs">
-            <span className={agentOn ? "text-emerald-600" : "text-muted-foreground"}>
-              الوكيل الذكي
-            </span>
-            <Switch
-              checked={agentOn}
-              disabled={toggle.isPending || !d}
-              onCheckedChange={(v) => toggle.mutate(!!v)}
-            />
-          </label>
         </div>
-        {globallyDisabled && (
-          <div className="border-t bg-amber-100 text-amber-900">
-            <div className="mx-auto w-full max-w-3xl px-4 py-2 text-xs">
-              الوكيل الذكي معطّل على مستوى المتجر بالكامل — لن يتم إرسال ردود آلية.
-            </div>
-          </div>
-        )}
         {needsIntervention && (
           <div className="border-t border-destructive/40 bg-destructive/10">
             <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-3 px-4 py-3">
@@ -304,7 +287,7 @@ function ConversationPage() {
                   if (reply.trim()) send.mutate(reply.trim());
                 }
               }}
-              placeholder={agentOn ? "رد يدوي (سيظهر كرسالة من المتجر)…" : "الوكيل مغلق — اكتب ردك…"}
+              placeholder="اكتب ردك (سيظهر كرسالة من المتجر)…"
               rows={2}
               className="min-h-[52px] resize-none"
               disabled={send.isPending}
