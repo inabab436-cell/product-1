@@ -104,7 +104,7 @@ function DashboardPage() {
 
   const activeCount = (convos.data ?? []).filter((c) => {
     const t = new Date(c.last_message_at ?? c.created_at).getTime();
-    return c.agent_enabled && Number.isFinite(t) && Date.now() - t <= ACTIVE_NOW_THRESHOLD_MS;
+    return Number.isFinite(t) && Date.now() - t <= ACTIVE_NOW_THRESHOLD_MS;
   }).length;
   const unread = (notifs.data ?? []).filter((n) => !n.is_read).length;
   const orderCount = earnings.data?.orderCount ?? 0;
@@ -152,7 +152,7 @@ function DashboardPage() {
                   <MessagesSquare className="h-5 w-5" />
                 </span>
                 <span>
-                  <span className="block text-xs text-muted-foreground">عملاء يتحدث معهم الوكيل</span>
+                  <span className="block text-xs text-muted-foreground">محادثات نشطة</span>
                   <span className="block text-2xl font-bold">{convos.isLoading ? "—" : activeCount}</span>
                 </span>
               </Link>
@@ -254,26 +254,8 @@ function BrandAgentSettings() {
   const disabled = q.data?.agent_globally_disabled ?? false;
   return (
     <section className="space-y-3">
-      {disabled && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800">
-          <ShieldAlert className="mt-0.5 h-4 w-4" />
-          <div>
-            الوكيل الذكي معطّل حالياً على مستوى المتجر بالكامل — لن يتم إرسال أي رد آلي على أي محادثة.
-          </div>
-        </div>
-      )}
       <div className="hub-card overflow-hidden">
-        <div className="flex items-center justify-between gap-4 p-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-hub-mint-soft text-hub-mint"><Bot className="h-6 w-6" /></span>
-            <div>
-              <div className="text-sm font-bold">تشغيل الوكيل الذكي</div>
-              <div className="text-xs text-muted-foreground">لكل محادثات المتجر</div>
-            </div>
-          </div>
-          <Switch checked={!disabled} disabled={q.isLoading || m.isPending} onCheckedChange={(v) => m.mutate(!v)} />
-        </div>
-        <Link to="/orders" hash="messages" className="flex items-center gap-3 border-t border-border px-4 py-3 text-sm font-semibold">
+        <Link to="/orders" hash="messages" className="flex items-center gap-3 px-4 py-3 text-sm font-semibold">
           <Settings2 className="h-4 w-4 text-muted-foreground" />
           رسائل حالات الطلبات
           <ArrowLeft className="me-auto h-4 w-4 text-muted-foreground" />
@@ -389,20 +371,6 @@ function ConversationListItem({ c, now }: { c: ConversationRow; now: number }) {
             )}
           </div>
         </Link>
-        <label
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 px-2 py-1 text-[11px]"
-          title="تشغيل/إيقاف الوكيل الذكي لهذه المحادثة"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span className={c.agent_enabled ? "text-emerald-600" : "text-muted-foreground"}>
-            وكيل
-          </span>
-          <Switch
-            checked={c.agent_enabled}
-            disabled={toggle.isPending}
-            onCheckedChange={(v) => toggle.mutate(!!v)}
-          />
-        </label>
       </div>
     </li>
   );
