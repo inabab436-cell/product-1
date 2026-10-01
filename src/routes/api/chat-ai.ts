@@ -1237,7 +1237,7 @@ export const Route = createFileRoute("/api/chat-ai")({
           const conversationAgentEnabled = (convo as any).agent_enabled !== false;
           // The AI agent feature is removed: never generate an automatic reply.
           void agentGloballyDisabled; void conversationAgentEnabled;
-          if (true) {
+          if ((true as boolean)) {
             const msgs = await loadMessages(conversation_id);
             return respond({
               conversation_id,
