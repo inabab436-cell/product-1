@@ -80,12 +80,6 @@ function DashboardPage() {
   const can = (perm: StaffPermission) => (actor ? hasPermission(actor, perm) : false);
   const isOwner = actor?.isOwner ?? false;
 
-  const convos = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () => listConversations(),
-    refetchInterval: 15000,
-    enabled: can("conversations"),
-  });
   const notifs = useQuery({
     queryKey: ["notifications"],
     queryFn: () => listNotifications(),
@@ -101,10 +95,6 @@ function DashboardPage() {
   const visibleTiles = useMemo(() => TILES.filter((t) => can(t.perm)), [actor]);
 
 
-  const activeCount = (convos.data ?? []).filter((c) => {
-    const t = new Date(c.last_message_at ?? c.created_at).getTime();
-    return Number.isFinite(t) && Date.now() - t <= ACTIVE_NOW_THRESHOLD_MS;
-  }).length;
   const unread = (notifs.data ?? []).filter((n) => !n.is_read).length;
   const orderCount = earnings.data?.orderCount ?? 0;
   const pendingProfit = earnings.data?.pendingProfit ?? 0;
