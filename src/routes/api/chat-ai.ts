@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { resolveVisitorId } from "./visitor";
 import { safeSlice } from "@/lib/safe-slice";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
-import { normalizeAgentPersona, type AgentPersona } from "@/lib/agent-persona";
 import { isProductShowable, showableProductId } from "@/lib/product-media-availability";
 import { findNamedProduct } from "@/lib/product-name-match";
 import {
@@ -519,7 +518,6 @@ async function extractProfileFieldsWithAI(
 
 export function buildSystemPrompt(
   inventoryText?: string,
-  persona?: AgentPersona,
 ): string {
   // SECURITY: the prompt is FIXED, operator-authored instruction, organised
   // as ordered named sections in `src/lib/agent-prompt.ts`. Everything inside
@@ -528,7 +526,7 @@ export function buildSystemPrompt(
   // remove the delimiters or the untrusted-data section without a full
   // security review; without them a hostile customer message can override
   // the rules (prompt injection).
-  return buildAgentPrompt(inventoryText, persona);
+  return buildAgentPrompt(inventoryText);
 }
 
 
@@ -1235,13 +1233,6 @@ export const Route = createFileRoute("/api/chat-ai")({
           // has disabled the agent globally, or when this specific
           // conversation's agent toggle is off. The user's message is
           // already persisted above so the merchant can reply manually.
-          // Merchant-chosen name + gender for the agent. Missing columns or
-          // empty values simply fall back to the default persona.
-          const agentPersona: AgentPersona = normalizeAgentPersona({
-            name: (merchant as any)?.agent_name,
-            gender: (merchant as any)?.agent_gender,
-          });
-
           const agentGloballyDisabled = !!(merchant as any)?.agent_globally_disabled;
           const conversationAgentEnabled = (convo as any).agent_enabled !== false;
           if (agentGloballyDisabled || !conversationAgentEnabled) {
@@ -2026,7 +2017,7 @@ export const Route = createFileRoute("/api/chat-ai")({
           const systemPrompt =
             // Inventory is intentionally absent here. It appears exactly once,
             // in the trailing snapshot that is rebuilt for every model pass.
-            buildSystemPrompt(undefined, agentPersona) +
+            buildSystemPrompt(undefined) +
             customerContext +
             snapshotPointer +
             paymentBlock +
