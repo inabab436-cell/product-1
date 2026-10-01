@@ -63,7 +63,6 @@ const TILES: Tile[] = [
   { to: "/earnings", label: "الأرباح", description: "ملخص التحصيل", icon: <TrendingUp className="h-6 w-6" />, tone: "bg-hub-mint-soft text-hub-mint", perm: "earnings" },
   { to: "/shipping", label: "الشحن", description: "المناطق والتكلفة", icon: <Truck className="h-6 w-6" />, tone: "bg-hub-sky-soft text-hub-sky", perm: "brand_data" },
   { to: "/settings/payment-methods", label: "الدفع", description: "طرق استلام المال", icon: <CreditCard className="h-6 w-6" />, tone: "bg-hub-coral-soft text-hub-coral", perm: "settings" },
-  { to: "/policies", label: "السياسات", description: "شروط متجرك", icon: <ScrollText className="h-6 w-6" />, tone: "bg-hub-gold-soft text-hub-gold", perm: "brand_data" },
   { to: "/contacts", label: "التواصل", description: "بيانات الاتصال", icon: <PhoneCall className="h-6 w-6" />, tone: "bg-hub-sky-soft text-hub-sky", perm: "brand_data" },
 ];
 
@@ -146,17 +145,6 @@ function DashboardPage() {
                 </span>
               </Link>
               )}
-              {can("conversations") && (
-              <Link to="/missing-info" className="hub-card flex min-h-28 flex-col justify-between p-4">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
-                  <MessagesSquare className="h-5 w-5" />
-                </span>
-                <span>
-                  <span className="block text-xs text-muted-foreground">محادثات نشطة</span>
-                  <span className="block text-2xl font-bold">{convos.isLoading ? "—" : activeCount}</span>
-                </span>
-              </Link>
-              )}
               {can("earnings") && (
               <Link to="/earnings" className="hub-card col-span-2 flex items-center gap-4 p-4">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-secondary text-secondary-foreground">
@@ -195,17 +183,6 @@ function DashboardPage() {
 
           <section className="space-y-2.5">
             <h2 className="px-1 text-sm font-bold">روابط مساعدة</h2>
-            {can("conversations") && <InterventionsLink />}
-            {can("conversations") && (
-
-            <Link to="/missing-info" className="hub-card flex items-center gap-3 p-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted text-foreground">
-                <HelpCircle className="h-5 w-5" />
-              </span>
-              <span className="min-w-0 flex-1 text-sm font-semibold">معلومات ناقصة</span>
-              <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </Link>
-            )}
             {can("settings") && (
             <Link to="/settings/notifications" className="hub-card flex items-center gap-3 p-4">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted text-foreground">
@@ -226,8 +203,6 @@ function DashboardPage() {
             )}
           </section>
 
-           {can("conversations") && <BrandAgentSettings />}
-           {can("conversations") && <ConversationsSection />}
            <NotificationsSection rows={notifs.data ?? []} loading={notifs.isLoading} error={notifs.error} />
         </div>
       </div>
@@ -441,10 +416,9 @@ function formatTime(iso: string) {
   } catch { return iso; }
 }
 
-function notificationTarget(row: NotificationRow): { to: "/orders" | "/missing-info" | "/conversation/$id"; params?: { id: string } } {
-  if (row.type === "new_order") return { to: "/orders" };
-  if (row.type === "missing_information" || row.type === "missing_info_followup") return { to: "/missing-info" };
-  return { to: "/conversation/$id", params: { id: row.conversation_id } };
+
+function notificationTarget(_row: NotificationRow): { to: "/orders"; params?: undefined } {
+  return { to: "/orders" };
 }
 
 function NotificationsSection({ rows, loading, error }: { rows: NotificationRow[]; loading: boolean; error: unknown }) {
