@@ -12,3 +12,4 @@
 - [x] Align the waitlist page with the main CUPAI design and add a live three-day launch countdown
 - [x] Add the complete customer chat to the brand owner's website preview, connected to the same agent
 - [x] Browser/device push notifications (Firebase Cloud Messaging) for new orders, missing info, and human handoff
+- [x] Remove product-image analysis and simplify image upload with manual colour assignment
